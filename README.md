@@ -1,21 +1,24 @@
 # Ceradon Node Architect
 
-Offline-first CLI for modeling COTS RF/sensor nodes (hosts, radios, antennas, batteries, sensors) and estimating power draw, runtime, link range, plausible capabilities, and a recommended role. Designed for Raspberry Pi/Jetson-class deployments where WiFi CSI pose sensing is the long-term anchor.
+Offline-first CLI for modeling COTS RF/sensor nodes (Linux hosts, WiFi/LoRa/FPV/SDR/cellular radios, antennas, batteries, and sensors) you can buy from Amazon/RadioShack-tier suppliers. It estimates power draw, runtime, coarse RF range, likely capabilities, and a recommended role while staying lightweight enough for Raspberry Pi/Jetson deployments that anchor on WiFi CSI pose sensing.
 
 ## Features
-- Curated component library with Linux hosts, WiFi/LoRa/FPV/SDR radios, antennas, batteries, and basic sensors.
-- JSON-driven build configs; fast CLI to list parts and simulate builds.
-- Estimates total power, runtime from battery Wh, coarse radio range with antenna gain, and capability set (CSI-aware when supported).
-- Generates concise text reports suitable for field notes or further tooling.
+- Rich COTS catalog: Raspberry Pis, Jetson/NUC-class boxes, handheld PCs, WiFi/LoRa/FPV/SDR/cellular links, omni/patch/yagi/FPV antennas, USB-PD and TalentCell batteries, and simple sensors (camera/GPS/IMU/environmental).
+- JSON-driven builds plus bundled presets for quick archetypes.
+- Estimator accounts for host idle/load, radio tx/rx, sensor draw, antenna gain buckets, and environment factors (lab/urban indoor/urban outdoor/rural open/subterranean).
+- Capability tags flag WiFi recon/CSI potential, LoRa telemetry, FPV video, SDR capture, cellular backhaul, and sensor payloads; roles steer toward recon, CSI experiments, FPV payloads, or low-power telemeter nodes.
+- Concise text reports suitable for field notes or further scripting.
 
 ## Quickstart
-1. Create a Python 3.9+ virtual environment (no external deps beyond stdlib) and run the CLI directly:
+1. Create a Python 3.9+ virtual environment (stdlib-only dependencies) and run the CLI directly:
    ```bash
    python -m ceradon list
+   python -m ceradon presets
    python -m ceradon simulate sample_builds/pose_ready.json
+   python -m ceradon simulate --preset urban_wifi_recon
    ```
 
-2. If you prefer to install the package locally:
+2. Install locally if preferred:
    ```bash
    python -m venv .venv
    source .venv/bin/activate
@@ -26,29 +29,38 @@ Offline-first CLI for modeling COTS RF/sensor nodes (hosts, radios, antennas, ba
 Create a JSON file with component IDs from `python -m ceradon list`:
 ```json
 {
-  "host": "rpi4",
+  "host": "rpi5_8gb",
   "radio": "wifi_ax210",
-  "antenna": "yagi_12dbi",
-  "battery": "usb_pd_60wh",
-  "sensors": ["gps_usb", "imu_spi"]
+  "antenna": "patch_14dbi",
+  "battery": "talentcell_144wh",
+  "sensors": ["gps_usb", "imu_i2c", "camera_pi"],
+  "environment": "urban_outdoor"
 }
 ```
-Run `python -m ceradon simulate your_build.json` to see the report.
+Run `python -m ceradon simulate your_build.json` to see the report. Leave `sensors` empty or point to `none` for bare RF nodes. Use `--environment` to override the config when simulating.
+
+## Presets
+The `sample_builds/` directory includes quick archetypes; list them with `python -m ceradon presets`:
+- `pose_ready` — Jetson + AX210 + panel for CSI/pose experimentation.
+- `rural_lora_sensor` — Low-power Pi + LoRa yagi + TalentCell for rural telemetry.
+- `urban_wifi_recon` — NUC + AX210 + patch panel + V-mount for city RF mapping.
+- `fpv_relay_payload` — Handheld PC + analog FPV VTx + CP antenna for video relay.
+- `cellular_backhaul_node` — Mini PC with cellular hotspot backhaul for remote drops.
 
 ## Estimation model (coarse but consistent)
-- **Power**: sums host + radio + sensors (antenna/battery assumed negligible draw).
-- **Runtime**: battery Wh divided by load watts.
-- **Range**: radio baseline (WiFi 0.25 km, LoRa 5 km, Analog FPV 1 km, SDR 2 km) scaled by antenna/radio gain buckets.
-- **Capabilities**: derived from radio type, CSI flag, and attached sensors.
-- **Recommended role**: favors CSI-ready payloads, otherwise picks endurance or niche roles based on runtime/range.
+- **Power**: averages host idle/load + radio tx/rx + sensor draw (antenna assumed zero) with an optional environment factor.
+- **Runtime**: battery Wh divided by estimated load watts.
+- **Range**: baseline per radio type/band (e.g., WiFi 2.4 ≈ 0.15 km, WiFi 5/6 ≈ 0.08 km, LoRa ≈ 2 km, analog FPV ≈ 1 km, SDR ≈ 0.5 km; cellular reports infrastructure backhaul) scaled by antenna gain buckets and environment multipliers (lab 0.8x, urban indoor 0.3x, urban outdoor 0.6x, rural open 1x, subterranean 0.2x).
+- **Capabilities**: WiFi recon/monitor, CSI potential, LoRa telemetry, analog FPV, SDR capture, cellular backhaul, plus sensor-driven tags (video, GPS, IMU, environmental).
+- **Recommended role**: heuristic rules prefer CSI/channel analysis builds, WiFi recon nodes with decent CPU/runtime, LoRa endurance beacons, FPV payload relays, SDR survey boxes, or cellular backhaul notes.
 
 ## Project layout
 - `src/ceradon/` — models, data loader, estimator, CLI entrypoints.
 - `data/default_components.json` — component catalog; extend as needed.
-- `sample_builds/` — starter build configs.
+- `sample_builds/` — starter build configs/presets.
 - `tests/` — lightweight regression tests.
 
 ## Hardening and extensions
 - Extend `data/default_components.json` with local parts; keep IDs unique.
 - Use `NodeBuild` + `estimate_node` in your own scripts for CSV/JSON exports.
-- Future-friendly toward CSI-based pose estimation: WiFi cards with CSI set `supports_csi: true` so capability strings and recommended roles surface it early.
+- Future-friendly toward CSI-based pose estimation: WiFi cards with `supports_csi: true` and higher `cpu_score` surface CSI roles early so you can layer pose pipelines later.

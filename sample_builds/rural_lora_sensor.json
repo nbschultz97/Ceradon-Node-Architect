@@ -1,0 +1,9 @@
+{
+  "description": "Rural LoRa sensor drop with long runtime",
+  "host": "rpi4",
+  "radio": "lora_rfm95",
+  "antenna": "yagi_900_10dbi",
+  "battery": "talentcell_144wh",
+  "sensors": ["env_bme280"],
+  "environment": "rural_open"
+}

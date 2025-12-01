@@ -1,0 +1,9 @@
+{
+  "description": "NUC + AX210 + patch panel for urban WiFi recon",
+  "host": "nuc_i7",
+  "radio": "wifi_ax210",
+  "antenna": "patch_14dbi",
+  "battery": "v_mount_98wh",
+  "sensors": ["gps_usb", "imu_i2c"],
+  "environment": "urban_outdoor"
+}
