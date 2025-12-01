@@ -57,8 +57,14 @@ The `sample_builds/` directory includes quick archetypes; list them with `python
 ## Project layout
 - `src/ceradon/` — models, data loader, estimator, CLI entrypoints.
 - `data/default_components.json` — component catalog; extend as needed.
+- `web/` — static browser UI that mirrors the CLI estimator (no backend required).
 - `sample_builds/` — starter build configs/presets.
 - `tests/` — lightweight regression tests.
+
+## Web UI
+- The `web/` folder hosts a static HTML/JS/CSS version of the estimator that runs entirely in the browser using `web/components.json` (kept in sync with `data/default_components.json`).
+- To run locally, open `web/index.html` in a browser or start a quick server: `cd web && python -m http.server 8000` then browse to `http://localhost:8000`.
+- GitHub Pages: in repository **Settings → Pages**, set **Source** to the `main` branch and **Folder** to `/web` to serve the UI directly.
 
 ## Hardening and extensions
 - Extend `data/default_components.json` with local parts; keep IDs unique.
