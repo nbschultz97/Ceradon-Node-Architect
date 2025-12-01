@@ -1,0 +1,177 @@
+{
+  "hosts": [
+    {
+      "id": "rpi4",
+      "name": "Raspberry Pi 4 Model B 4GB",
+      "power_w": 6.5,
+      "cpu": "Broadcom Cortex-A72",
+      "ram_gb": 4,
+      "storage": "microSD",
+      "os": "Raspberry Pi OS",
+      "ports": ["USB 3", "GPIO", "CSI"],
+      "weight_kg": 0.046,
+      "notes": "Baseline low-power SBC"
+    },
+    {
+      "id": "jetson_nano",
+      "name": "NVIDIA Jetson Nano 4GB",
+      "power_w": 10.0,
+      "cpu": "Quad-core ARM A57",
+      "ram_gb": 4,
+      "storage": "microSD",
+      "os": "Ubuntu",
+      "ports": ["USB 3", "GPIO", "CSI"],
+      "weight_kg": 0.14,
+      "notes": "Edge AI capable"
+    },
+    {
+      "id": "nuc_i7",
+      "name": "Intel NUC (i7 / 16GB)",
+      "power_w": 25.0,
+      "cpu": "Intel i7-1165G7",
+      "ram_gb": 16,
+      "storage": "NVMe 512GB",
+      "os": "Ubuntu",
+      "ports": ["USB-C", "USB 3", "HDMI"],
+      "weight_kg": 0.8,
+      "notes": "Strong x86 host for SDR/CSI processing"
+    }
+  ],
+  "radios": [
+    {
+      "id": "wifi_ax210",
+      "name": "Intel AX210 M.2 WiFi 6E",
+      "power_w": 3.5,
+      "band": "2.4/5/6 GHz",
+      "radio_type": "wifi",
+      "modulation": "OFDMA",
+      "max_power_dbm": 23,
+      "antenna_gain_db": 2,
+      "supports_csi": true,
+      "notes": "Supports CSI on Linux with monitor mode"
+    },
+    {
+      "id": "lora_sx1302",
+      "name": "LoRa concentrator (SX1302)",
+      "power_w": 2.0,
+      "band": "868/915 MHz",
+      "radio_type": "lora",
+      "modulation": "LoRaWAN",
+      "max_power_dbm": 27,
+      "antenna_gain_db": 0,
+      "supports_csi": false,
+      "notes": "Long-haul telemetry"
+    },
+    {
+      "id": "analog_5g8",
+      "name": "5.8 GHz Analog FPV VTx 800mW",
+      "power_w": 4.5,
+      "band": "5.8 GHz",
+      "radio_type": "analog_fpv",
+      "modulation": "FM analog",
+      "max_power_dbm": 29,
+      "antenna_gain_db": 1,
+      "supports_csi": false,
+      "notes": "Simple FPV downlink"
+    },
+    {
+      "id": "sdr_b200mini",
+      "name": "Ettus B200mini SDR",
+      "power_w": 5.5,
+      "band": "70 MHz - 6 GHz",
+      "radio_type": "sdr",
+      "modulation": "Wideband SDR",
+      "max_power_dbm": 20,
+      "antenna_gain_db": 0,
+      "supports_csi": false,
+      "notes": "General SDR front-end"
+    }
+  ],
+  "antennas": [
+    {
+      "id": "omni_5dbi",
+      "name": "5 dBi Omni",
+      "power_w": 0,
+      "gain_db": 5,
+      "pattern": "omni",
+      "polarization": "vertical",
+      "notes": "Baseline whip"
+    },
+    {
+      "id": "panel_8dbi",
+      "name": "8 dBi Panel",
+      "power_w": 0,
+      "gain_db": 8,
+      "pattern": "panel",
+      "polarization": "vertical",
+      "notes": "Directional panel"
+    },
+    {
+      "id": "yagi_12dbi",
+      "name": "12 dBi Yagi",
+      "power_w": 0,
+      "gain_db": 12,
+      "pattern": "yagi",
+      "polarization": "linear",
+      "notes": "Long-range directional"
+    }
+  ],
+  "batteries": [
+    {
+      "id": "liion_98wh",
+      "name": "6S Li-Ion pack 98Wh",
+      "power_w": 0,
+      "capacity_wh": 98,
+      "chemistry": "Li-ion",
+      "output_voltage": 22.2,
+      "mass_kg": 1.0,
+      "notes": "Airline-safe pack"
+    },
+    {
+      "id": "usb_pd_60wh",
+      "name": "USB-PD bank 60Wh",
+      "power_w": 0,
+      "capacity_wh": 60,
+      "chemistry": "Li-ion",
+      "output_voltage": 12,
+      "mass_kg": 0.4,
+      "notes": "Pocketable"
+    },
+    {
+      "id": "field_200wh",
+      "name": "Rugged field pack 200Wh",
+      "power_w": 0,
+      "capacity_wh": 200,
+      "chemistry": "LiFePO4",
+      "output_voltage": 12,
+      "mass_kg": 2.5,
+      "notes": "Long endurance"
+    }
+  ],
+  "sensors": [
+    {
+      "id": "camera_usb",
+      "name": "USB 1080p camera",
+      "power_w": 2.0,
+      "sensor_type": "camera",
+      "interface": "USB",
+      "notes": "Baseline video"
+    },
+    {
+      "id": "gps_usb",
+      "name": "USB GPS puck",
+      "power_w": 1.0,
+      "sensor_type": "gps",
+      "interface": "USB",
+      "notes": "Location/time"
+    },
+    {
+      "id": "imu_spi",
+      "name": "9-axis IMU (SPI)",
+      "power_w": 0.2,
+      "sensor_type": "imu",
+      "interface": "SPI",
+      "notes": "Motion/orientation"
+    }
+  ]
+}

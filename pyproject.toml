@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ceradon-node-architect"
+version = "0.1.0"
+description = "Offline-first CLI for COTS RF/sensor node estimation"
+authors = [{name = "Ceradon"}]
+requires-python = ">=3.9"
+
+[project.scripts]
+ceradon = "ceradon.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
