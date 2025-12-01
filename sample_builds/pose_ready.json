@@ -1,7 +1,9 @@
 {
-  "host": "jetson_nano",
+  "description": "Jetson + AX210 + panel for CSI / pose experimentation",
+  "host": "jetson_orin_nano",
   "radio": "wifi_ax210",
   "antenna": "panel_8dbi",
-  "battery": "liion_98wh",
-  "sensors": ["camera_usb", "imu_spi", "gps_usb"]
+  "battery": "v_mount_98wh",
+  "sensors": ["camera_usb", "imu_i2c", "gps_usb"],
+  "environment": "urban_indoor"
 }

@@ -1,0 +1,9 @@
+{
+  "description": "Handheld PC driving analog FPV link with camera",
+  "host": "handheld_pc",
+  "radio": "analog_5g8",
+  "antenna": "fpv_cp",
+  "battery": "usb_pd_70wh",
+  "sensors": ["camera_usb"],
+  "environment": "urban_outdoor"
+}

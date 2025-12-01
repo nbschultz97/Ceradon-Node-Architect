@@ -1,0 +1,9 @@
+{
+  "description": "Mini PC with cellular hotspot backhaul for remote drops",
+  "host": "intel_nuc_i5",
+  "radio": "cellular_hotspot",
+  "antenna": "omni_5dbi",
+  "battery": "talentcell_144wh",
+  "sensors": ["camera_usb"],
+  "environment": "urban_outdoor"
+}
