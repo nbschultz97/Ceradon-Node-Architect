@@ -64,7 +64,7 @@ The `sample_builds/` directory includes quick archetypes; list them with `python
 ## Web UI
 - The `web/` folder hosts a static HTML/JS/CSS version of the estimator that runs entirely in the browser using `web/components.json` (kept in sync with `data/default_components.json`).
 - To run locally, open `web/index.html` in a browser or start a quick server: `cd web && python -m http.server 8000` then browse to `http://localhost:8000`.
-- GitHub Pages: in repository **Settings → Pages**, set **Source** to the `main` branch and **Folder** to `/web` to serve the UI directly.
+- GitHub Pages: GitHub now only exposes `(root)` or `/docs` as publish targets. A root-level `index.html` is provided to redirect to `/web/index.html`, so set **Settings → Pages → Source** to the `main` branch and **Folder** to `(root)` to host the UI without moving files. If you prefer `/docs`, copy `web/` into `docs/` and serve from there instead.
 
 ## Hardening and extensions
 - Extend `data/default_components.json` with local parts; keep IDs unique.
