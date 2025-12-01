@@ -1,0 +1,7 @@
+{
+  "host": "jetson_nano",
+  "radio": "wifi_ax210",
+  "antenna": "panel_8dbi",
+  "battery": "liion_98wh",
+  "sensors": ["camera_usb", "imu_spi", "gps_usb"]
+}

@@ -1,0 +1,83 @@
+from __future__ import annotations
+
+import argparse
+import json
+import pathlib
+import sys
+from typing import List
+
+from .data_loader import find_by_id, load_components
+from .estimator import estimate_node, format_report
+from .models import NodeBuild
+
+
+def parse_build(config_path: pathlib.Path):
+    inventory = load_components()
+    with config_path.open("r", encoding="utf-8") as handle:
+        data = json.load(handle)
+
+    host = find_by_id(inventory["hosts"], data["host"])
+    radio = find_by_id(inventory["radios"], data["radio"])
+    antenna = find_by_id(inventory["antennas"], data["antenna"])
+    battery = find_by_id(inventory["batteries"], data["battery"])
+    sensor_ids: List[str] = data.get("sensors", [])
+    sensors = [find_by_id(inventory["sensors"], sid) for sid in sensor_ids]
+
+    return NodeBuild(host=host, radio=radio, antenna=antenna, battery=battery, sensors=sensors)
+
+
+def list_components():
+    inventory = load_components()
+    for key, items in inventory.items():
+        print(f"{key.upper()}")
+        for item in items:
+            if key == "batteries":
+                extra = f"{item.capacity_wh} Wh, {item.chemistry}"
+            elif key == "antennas":
+                extra = f"{item.gain_db} dBi, {item.pattern}"
+            elif key == "radios":
+                extra = f"{item.radio_type}, {item.band}"
+            else:
+                extra = item.notes or ""
+            print(f"- {item.id}: {item.name} ({extra})")
+        print("")
+
+
+def simulate(config_path: pathlib.Path):
+    build = parse_build(config_path)
+    estimate = estimate_node(build)
+    report = format_report(build, estimate)
+    print(report)
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Ceradon Node Architect: estimate power, runtime, and roles for RF/sensor nodes",
+    )
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    sub.add_parser("list", help="List all available components")
+
+    sim = sub.add_parser("simulate", help="Simulate a build from a JSON config")
+    sim.add_argument("config", type=pathlib.Path, help="Path to build JSON")
+
+    return parser
+
+
+def main(argv=None):
+    argv = argv or sys.argv[1:]
+    parser = build_arg_parser()
+    args = parser.parse_args(argv)
+
+    if args.command == "list":
+        list_components()
+    elif args.command == "simulate":
+        simulate(args.config)
+    else:
+        parser.print_help()
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
