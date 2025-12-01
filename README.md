@@ -66,6 +66,11 @@ The `sample_builds/` directory includes quick archetypes; list them with `python
 - To run locally, open `web/index.html` in a browser or start a quick server: `cd web && python -m http.server 8000` then browse to `http://localhost:8000`.
 - GitHub Pages: GitHub now only exposes `(root)` or `/docs` as publish targets. A root-level `index.html` is provided to redirect to `/web/index.html`, so set **Settings → Pages → Source** to the `main` branch and **Folder** to `(root)` to host the UI without moving files. If you prefer `/docs`, copy `web/` into `docs/` and serve from there instead.
 
+### Web UI updates
+- Mobile-friendly single-page layout with configuration up top and results below.
+- Preset configurations for common nodes that pre-fill compute, RF chains, sensors, and environment (still editable after selection).
+- Multi-radio/antenna RF chains with basic host slot counts (`max_rf_chains`) to warn when a build exceeds modeled capacity.
+
 ## Hardening and extensions
 - Extend `data/default_components.json` with local parts; keep IDs unique.
 - Use `NodeBuild` + `estimate_node` in your own scripts for CSV/JSON exports.

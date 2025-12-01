@@ -3,38 +3,49 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ceradon Node Architect (Web)</title>
+  <title>Ceradon Node Architect</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="page-header">
     <div class="container">
-      <h1>Ceradon Node Architect (Web)</h1>
-      <p class="lead">Design COTS RF and sensor nodes using Linux hosts, radios, antennas, batteries, and sensors – estimate power, runtime, range, and capabilities in the browser.</p>
+      <h1>Ceradon Node Architect</h1>
+      <p class="lead">Assemble low-power RF and sensor nodes, explore presets, and estimate draw, runtime, and range entirely in the browser.</p>
     </div>
   </header>
 
-  <main class="container">
+  <main class="container layout">
     <section class="card" id="config-card">
-      <h2>Node configuration</h2>
+      <h2>Configure node</h2>
       <div id="error-banner" class="error-banner" role="alert" aria-live="polite"></div>
-      <div class="form-grid">
+
+      <div class="fieldset">
+        <div class="fieldset-header">
+          <div>
+            <p class="eyebrow">Presets</p>
+            <h3>Common node templates</h3>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="preset-select">Preset</label>
+          <select id="preset-select">
+            <option value="">Custom (no preset)</option>
+          </select>
+          <p id="preset-description" class="muted small">Pick a preset to pre-fill radios, antennas, and sensors.</p>
+        </div>
+      </div>
+
+      <div class="fieldset">
+        <div class="fieldset-header">
+          <div>
+            <p class="eyebrow">Compute</p>
+            <h3>Host platform</h3>
+          </div>
+        </div>
         <div class="form-group">
           <label for="compute-select">Compute host</label>
           <select id="compute-select">
             <option value="">Select compute</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="radio-select">Radio</label>
-          <select id="radio-select">
-            <option value="">Select radio</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="antenna-select">Antenna</label>
-          <select id="antenna-select">
-            <option value="">Select antenna</option>
           </select>
         </div>
         <div class="form-group">
@@ -45,19 +56,45 @@
         </div>
       </div>
 
-      <div class="form-group">
-        <label>Sensors</label>
+      <div class="fieldset">
+        <div class="fieldset-header">
+          <div>
+            <p class="eyebrow">RF Chains</p>
+            <h3>Radios and antennas</h3>
+            <p class="muted small">Add one or more RF chains. Capacity is limited by the selected host.</p>
+          </div>
+          <button id="add-rf-chain-btn" class="ghost-btn" type="button">+ Add RF Chain</button>
+        </div>
+        <div id="rf-chains-container" class="rf-chains"></div>
+        <p id="rf-chain-count" class="muted small">RF chains: 0 / 0 available</p>
+      </div>
+
+      <div class="fieldset">
+        <div class="fieldset-header">
+          <div>
+            <p class="eyebrow">Sensors</p>
+            <h3>Payload</h3>
+          </div>
+        </div>
         <div id="sensors-container" class="sensor-checkboxes"></div>
       </div>
 
-      <div class="form-group">
-        <label for="environment-select">Environment</label>
-        <select id="environment-select">
-          <option value="lab">Lab</option>
-          <option value="urban_indoor">Urban indoor</option>
-          <option value="urban_outdoor">Urban outdoor</option>
-          <option value="rural_open">Rural open</option>
-        </select>
+      <div class="fieldset">
+        <div class="fieldset-header">
+          <div>
+            <p class="eyebrow">Environment</p>
+            <h3>Operating conditions</h3>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="environment-select">Environment</label>
+          <select id="environment-select">
+            <option value="lab">Lab</option>
+            <option value="urban_indoor">Urban indoor</option>
+            <option value="urban_outdoor">Urban outdoor</option>
+            <option value="rural_open">Rural open</option>
+          </select>
+        </div>
       </div>
 
       <button id="evaluate-btn" class="primary-btn" type="button">Evaluate node</button>
@@ -65,7 +102,7 @@
 
     <section class="card" id="results-panel">
       <h2>Results</h2>
-      <p>Load components and evaluate a configuration to see estimates.</p>
+      <div class="muted small">Load components and evaluate a configuration to see estimates.</div>
     </section>
   </main>
 
