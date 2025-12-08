@@ -216,6 +216,28 @@
         <div class="fieldset">
           <div class="fieldset-header">
             <div>
+              <p class="eyebrow">Node metadata</p>
+              <h3>Naming and role tags</h3>
+              <p class="muted small">Label the design for downstream planners and tag roles it can cover.</p>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="node-name">Node name</label>
+            <input id="node-name" type="text" placeholder="e.g., Urban relay node" />
+          </div>
+          <div class="form-group">
+            <label>Roles (select one or more)</label>
+            <div id="role-checkboxes" class="role-checkboxes"></div>
+          </div>
+          <div class="form-group">
+            <label for="node-notes">Notes</label>
+            <textarea id="node-notes" rows="3" placeholder="Mission notes, mounting constraints, cabling details..."></textarea>
+          </div>
+        </div>
+
+        <div class="fieldset">
+          <div class="fieldset-header">
+            <div>
               <p class="eyebrow">Compute</p>
               <h3>Host platform</h3>
             </div>
@@ -273,15 +295,74 @@
               <option value="rural_open">Rural open</option>
             </select>
           </div>
+          <div class="env-grid">
+            <div class="form-group">
+              <label for="altitude-select">Altitude band</label>
+              <select id="altitude-select">
+                <option value="sea_level">Sea level / < 500 m</option>
+                <option value="band_1000_2000">1000–2000 m</option>
+                <option value="band_2000_3000">2000–3000 m</option>
+                <option value="above_3000">> 3000 m</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="temperature-select">Temperature band</label>
+              <select id="temperature-select">
+                <option value="hot">Hot</option>
+                <option value="temperate">Temperate</option>
+                <option value="cold">Cold</option>
+                <option value="very_cold">Very cold</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <button id="evaluate-btn" class="primary-btn" type="button">Evaluate node</button>
       </section>
 
-      <section class="card" id="results-panel">
-        <h2>Results</h2>
-        <div class="muted small">Load components and evaluate a configuration to see estimates.</div>
-      </section>
+      <div class="stacked-column">
+        <section class="card" id="results-panel">
+          <h2>Results</h2>
+          <div class="muted small">Load components and evaluate a configuration to see estimates.</div>
+        </section>
+
+        <section class="card" id="designs-panel">
+          <div class="fieldset-header">
+            <div>
+              <p class="eyebrow">Library</p>
+              <h3>Saved node designs</h3>
+            </div>
+            <button id="export-designs" class="ghost-btn" type="button">Export Node Designs</button>
+          </div>
+
+          <div class="fieldset">
+            <div class="fieldset-header">
+              <div>
+                <p class="eyebrow">Constraints</p>
+                <h3>Filter by limits</h3>
+                <p class="muted small">Optional constraints screen out designs that exceed weight, runtime, or role needs.</p>
+              </div>
+            </div>
+            <div class="constraints-grid">
+              <div class="form-group">
+                <label for="max-weight">Max node weight (kg)</label>
+                <input id="max-weight" type="number" min="0" step="0.1" placeholder="e.g., 2.5" />
+              </div>
+              <div class="form-group">
+                <label for="min-runtime">Min adjusted runtime (hours)</label>
+                <input id="min-runtime" type="number" min="0" step="0.5" placeholder="e.g., 6" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Required roles</label>
+              <div id="required-role-checkboxes" class="role-checkboxes"></div>
+            </div>
+            <p class="muted small">Constraints update automatically and persist locally.</p>
+          </div>
+
+          <div id="designs-list" class="designs-list muted small">No saved designs yet.</div>
+        </section>
+      </div>
     </main>
   </div>
 

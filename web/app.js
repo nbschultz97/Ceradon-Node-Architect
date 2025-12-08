@@ -1,5 +1,24 @@
 let components = null;
 let lastPresetWarnings = [];
+let savedDesigns = [];
+let lastEvaluation = null;
+
+const STORAGE_KEYS = {
+  designs: 'ceradonSavedDesigns',
+  environment: 'ceradonEnvBands',
+  constraints: 'ceradonConstraints',
+};
+
+const ROLE_OPTIONS = ['sensor', 'relay', 'ground_station', 'controller', 'gateway', 'c2_support'];
+
+let activeConstraints = { maxWeight: null, minRuntime: null, requiredRoles: [] };
+
+const batteryCapacityFactor = {
+  sea_level: { hot: 1.0, temperate: 1.0, cold: 0.95, very_cold: 0.9 },
+  band_1000_2000: { hot: 0.95, temperate: 0.93, cold: 0.88, very_cold: 0.82 },
+  band_2000_3000: { hot: 0.9, temperate: 0.88, cold: 0.82, very_cold: 0.76 },
+  above_3000: { hot: 0.85, temperate: 0.82, cold: 0.75, very_cold: 0.7 },
+};
 
 const environmentPowerFactor = {
   lab: 0.8,
@@ -83,10 +102,17 @@ const PRESETS = [
 
 document.addEventListener('DOMContentLoaded', () => {
   loadComponents();
+  buildRoleCheckboxes();
+  loadSavedDesigns();
+  loadConstraints();
+  loadEnvironmentSelection();
   document.getElementById('evaluate-btn').addEventListener('click', handleEvaluate);
   document.getElementById('add-rf-chain-btn').addEventListener('click', () => addRfChain());
   document.getElementById('compute-select').addEventListener('change', () => updateRfCapacity());
   document.getElementById('preset-select').addEventListener('change', handlePresetChange);
+  document.getElementById('export-designs').addEventListener('click', exportDesigns);
+  bindConstraintInputs();
+  bindEnvironmentPersistence();
 });
 
 async function loadComponents() {
@@ -182,6 +208,149 @@ function populateSensors(sensors) {
     label.appendChild(document.createTextNode(sensor.name));
     container.appendChild(label);
   });
+}
+
+function buildRoleCheckboxes() {
+  const roleContainer = document.getElementById('role-checkboxes');
+  const requiredContainer = document.getElementById('required-role-checkboxes');
+  roleContainer.innerHTML = '';
+  requiredContainer.innerHTML = '';
+
+  ROLE_OPTIONS.forEach((role) => {
+    roleContainer.appendChild(createRoleCheckbox(role, 'role'));
+    requiredContainer.appendChild(createRoleCheckbox(role, 'required-role'));
+  });
+}
+
+function createRoleCheckbox(role, name) {
+  const label = document.createElement('label');
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.value = role;
+  checkbox.name = name;
+  label.appendChild(checkbox);
+  label.appendChild(document.createTextNode(formatRoleLabel(role)));
+  return label;
+}
+
+function formatRoleLabel(role) {
+  return role
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function loadEnvironmentSelection() {
+  const saved = localStorage.getItem(STORAGE_KEYS.environment);
+  if (!saved) return;
+  try {
+    const env = JSON.parse(saved);
+    if (env.environment) {
+      document.getElementById('environment-select').value = env.environment;
+    }
+    if (env.altitudeBand) {
+      document.getElementById('altitude-select').value = env.altitudeBand;
+    }
+    if (env.temperatureBand) {
+      document.getElementById('temperature-select').value = env.temperatureBand;
+    }
+  } catch (error) {
+    console.warn('Failed to load environment selection', error);
+  }
+}
+
+function bindEnvironmentPersistence() {
+  ['environment-select', 'altitude-select', 'temperature-select'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', persistEnvironmentSelection);
+    }
+  });
+}
+
+function persistEnvironmentSelection() {
+  const environment = document.getElementById('environment-select').value || 'lab';
+  const altitudeBand = document.getElementById('altitude-select').value || 'sea_level';
+  const temperatureBand = document.getElementById('temperature-select').value || 'temperate';
+  const payload = { environment, altitudeBand, temperatureBand };
+  localStorage.setItem(STORAGE_KEYS.environment, JSON.stringify(payload));
+}
+
+function loadConstraints() {
+  const stored = localStorage.getItem(STORAGE_KEYS.constraints);
+  if (!stored) return;
+  try {
+    const parsed = JSON.parse(stored);
+    activeConstraints = {
+      maxWeight: parsed.maxWeight ?? null,
+      minRuntime: parsed.minRuntime ?? null,
+      requiredRoles: parsed.requiredRoles || [],
+    };
+
+    if (parsed.maxWeight !== undefined) {
+      document.getElementById('max-weight').value = parsed.maxWeight;
+    }
+    if (parsed.minRuntime !== undefined) {
+      document.getElementById('min-runtime').value = parsed.minRuntime;
+    }
+
+    const requiredRoleInputs = document.querySelectorAll('input[name="required-role"]');
+    requiredRoleInputs.forEach((input) => {
+      input.checked = activeConstraints.requiredRoles.includes(input.value);
+    });
+    renderDesignsList();
+  } catch (error) {
+    console.warn('Failed to load constraints', error);
+  }
+}
+
+function bindConstraintInputs() {
+  const maxWeightInput = document.getElementById('max-weight');
+  const minRuntimeInput = document.getElementById('min-runtime');
+  const requiredRoleInputs = document.querySelectorAll('input[name="required-role"]');
+
+  maxWeightInput.addEventListener('input', () => {
+    activeConstraints.maxWeight = maxWeightInput.value ? Number(maxWeightInput.value) : null;
+    persistConstraints();
+    renderDesignsList();
+  });
+
+  minRuntimeInput.addEventListener('input', () => {
+    activeConstraints.minRuntime = minRuntimeInput.value ? Number(minRuntimeInput.value) : null;
+    persistConstraints();
+    renderDesignsList();
+  });
+
+  requiredRoleInputs.forEach((input) => {
+    input.addEventListener('change', () => {
+      activeConstraints.requiredRoles = Array.from(requiredRoleInputs)
+        .filter((el) => el.checked)
+        .map((el) => el.value);
+      persistConstraints();
+      renderDesignsList();
+    });
+  });
+}
+
+function persistConstraints() {
+  localStorage.setItem(STORAGE_KEYS.constraints, JSON.stringify(activeConstraints));
+}
+
+function loadSavedDesigns() {
+  const stored = localStorage.getItem(STORAGE_KEYS.designs);
+  if (stored) {
+    try {
+      savedDesigns = JSON.parse(stored) || [];
+    } catch (error) {
+      console.warn('Failed to parse saved designs', error);
+      savedDesigns = [];
+    }
+  }
+  renderDesignsList();
+}
+
+function persistDesigns() {
+  localStorage.setItem(STORAGE_KEYS.designs, JSON.stringify(savedDesigns));
 }
 
 function handlePresetChange(event) {
@@ -340,7 +509,14 @@ function handleEvaluate() {
   const computeId = document.getElementById('compute-select').value;
   const batteryId = document.getElementById('battery-select').value;
   const environment = document.getElementById('environment-select').value || 'lab';
+  const altitudeBand = document.getElementById('altitude-select').value || 'sea_level';
+  const temperatureBand = document.getElementById('temperature-select').value || 'temperate';
   const sensorIds = Array.from(document.querySelectorAll('input[name="sensor"]:checked')).map((el) => el.value);
+  const nodeName = (document.getElementById('node-name').value || '').trim();
+  const nodeNotes = (document.getElementById('node-notes').value || '').trim();
+  const selectedRoles = getSelectedRoles();
+
+  persistEnvironmentSelection();
 
   if (!computeId || !batteryId) {
     showError('Select compute and battery to evaluate.');
@@ -368,28 +544,66 @@ function handleEvaluate() {
     rfChains,
     sensors: selectedSensors,
     environment,
+    altitudeBand,
+    temperatureBand,
   };
 
   const totalPowerW = estimatePower(nodeConfig);
-  const runtimeHours = estimateRuntime(totalPowerW, battery);
+  const idealRuntimeHours = estimateRuntime(totalPowerW, battery);
+  const capacityFactor = (batteryCapacityFactor[altitudeBand] || {})[temperatureBand] ?? 1.0;
+  const adjustedRuntimeHours = idealRuntimeHours * capacityFactor;
   const rangeInfo = rfChains.map((chain) => ({
     ...chain,
     range: estimateRange(chain.radio, chain.antenna, environment),
   }));
 
   const capabilities = deriveCapabilities(rfChains, selectedSensors);
-  const recommendedRole = recommendRole({ rfChains, compute, sensors: selectedSensors, runtimeHours });
+  const recommendedRole = recommendRole({ rfChains, compute, sensors: selectedSensors, runtimeHours: adjustedRuntimeHours });
+  const totalWeightKg = computeTotalWeight(nodeConfig);
 
   const warnings = [];
-  if (runtimeHours > 0 && runtimeHours < 2) {
-    warnings.push('Runtime under 2 hours – consider a larger battery or lower draw components.');
+  if (adjustedRuntimeHours > 0 && adjustedRuntimeHours < 2) {
+    warnings.push('Adjusted runtime under 2 hours – consider a larger battery or lower draw components.');
   }
   if (rfChains.length > (compute.max_rf_chains || rfChains.length)) {
     warnings.push(`Warning: this host is configured with more RF chains than its modeled capacity (${rfChains.length} used vs ${compute.max_rf_chains || 'unknown'} available).`);
   }
   warnings.push(...chainWarnings, ...lastPresetWarnings);
 
-  renderResults({ nodeConfig, totalPowerW, runtimeHours, rangeInfo, capabilities, recommendedRole, warnings });
+  const constraintNotes = evaluateConstraints({ totalWeightKg, adjustedRuntimeHours, roles: selectedRoles }, true);
+  warnings.push(...constraintNotes.warnings);
+
+  lastEvaluation = {
+    id: `design-${Date.now()}`,
+    name: nodeName,
+    notes: nodeNotes,
+    roles: selectedRoles,
+    nodeConfig,
+    totalPowerW,
+    idealRuntimeHours,
+    adjustedRuntimeHours,
+    capacityFactor,
+    rangeInfo,
+    capabilities,
+    recommendedRole,
+    totalWeightKg,
+  };
+
+  renderResults({
+    nodeConfig,
+    totalPowerW,
+    idealRuntimeHours,
+    adjustedRuntimeHours,
+    rangeInfo,
+    capabilities,
+    recommendedRole,
+    warnings,
+    totalWeightKg,
+    capacityFactor,
+    selectedRoles,
+    nodeName,
+    nodeNotes,
+  });
 }
 
 function getRfChainsFromUI(catalog) {
@@ -443,6 +657,30 @@ function estimateRuntime(totalPowerW, battery) {
     return 0;
   }
   return battery.capacity_wh / totalPowerW;
+}
+
+function componentWeightKg(component) {
+  if (!component) return 0;
+  if (typeof component.weight_kg === 'number') return component.weight_kg;
+  if (typeof component.mass_kg === 'number') return component.mass_kg;
+  return 0;
+}
+
+function computeTotalWeight(config) {
+  const hostWeight = componentWeightKg(config.compute);
+  const batteryWeight = componentWeightKg(config.battery);
+  const sensorWeight = (config.sensors || []).reduce((sum, sensor) => sum + componentWeightKg(sensor), 0);
+  const rfWeight = (config.rfChains || []).reduce(
+    (sum, chain) => sum + componentWeightKg(chain.radio) + componentWeightKg(chain.antenna),
+    0,
+  );
+
+  const total = hostWeight + batteryWeight + sensorWeight + rfWeight;
+  return Math.round(total * 100) / 100;
+}
+
+function getSelectedRoles() {
+  return Array.from(document.querySelectorAll('input[name="role"]:checked')).map((el) => el.value);
 }
 
 function estimateRange(radio, antenna, environment) {
@@ -564,12 +802,264 @@ function recommendRole({ rfChains, compute, sensors, runtimeHours }) {
   return role;
 }
 
-function renderResults({ nodeConfig, totalPowerW, runtimeHours, rangeInfo, capabilities, recommendedRole, warnings }) {
+function describeAltitude(band) {
+  const labels = {
+    sea_level: 'Sea level / < 500 m',
+    band_1000_2000: '1000–2000 m',
+    band_2000_3000: '2000–3000 m',
+    above_3000: '> 3000 m',
+  };
+  return labels[band] || band.replaceAll('_', ' ');
+}
+
+function describeTemperature(band) {
+  const labels = {
+    hot: 'Hot',
+    temperate: 'Temperate',
+    cold: 'Cold',
+    very_cold: 'Very cold',
+  };
+  return labels[band] || band;
+}
+
+function evaluateConstraints(metrics, includeWarnings = false) {
+  const warnings = [];
+  let passes = true;
+
+  if (activeConstraints.maxWeight && metrics.totalWeightKg > activeConstraints.maxWeight) {
+    passes = false;
+    if (includeWarnings) {
+      warnings.push(`Exceeds max weight (${metrics.totalWeightKg.toFixed(2)} kg > ${activeConstraints.maxWeight} kg).`);
+    }
+  }
+
+  if (activeConstraints.minRuntime && metrics.adjustedRuntimeHours < activeConstraints.minRuntime) {
+    passes = false;
+    if (includeWarnings) {
+      warnings.push(
+        `Adjusted runtime below requirement (${metrics.adjustedRuntimeHours.toFixed(1)} h < ${activeConstraints.minRuntime} h).`,
+      );
+    }
+  }
+
+  if (activeConstraints.requiredRoles?.length) {
+    const roles = metrics.roles || [];
+    const missing = activeConstraints.requiredRoles.filter((role) => !roles.includes(role));
+    if (missing.length) {
+      passes = false;
+      if (includeWarnings) {
+        warnings.push(`Missing required roles: ${missing.map((role) => formatRoleLabel(role)).join(', ')}`);
+      }
+    }
+  }
+
+  return includeWarnings ? { passes, warnings } : { passes };
+}
+
+function renderDesignsList() {
+  const container = document.getElementById('designs-list');
+  if (!savedDesigns.length) {
+    container.textContent = 'No saved designs yet.';
+    return;
+  }
+
+  const filtered = savedDesigns.filter((design) =>
+    evaluateConstraints(
+      {
+        totalWeightKg: design.totalWeightKg,
+        adjustedRuntimeHours: design.adjustedRuntimeHours,
+        roles: design.roles,
+      },
+      false,
+    ).passes,
+  );
+
+  const hiddenCount = savedDesigns.length - filtered.length;
+  container.innerHTML = '';
+
+  if (hiddenCount > 0) {
+    const note = document.createElement('p');
+    note.className = 'muted small';
+    note.textContent = `${hiddenCount} design(s) hidden by constraints.`;
+    container.appendChild(note);
+  }
+
+  filtered.forEach((design) => {
+    const entry = document.createElement('div');
+    entry.className = 'design-entry';
+
+    const title = document.createElement('h4');
+    title.textContent = design.name || 'Unnamed node design';
+    entry.appendChild(title);
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.innerHTML = `
+      <span>Adjusted runtime: ${design.adjustedRuntimeHours.toFixed(1)} h</span>
+      <span>Total weight: ${design.totalWeightKg.toFixed(2)} kg</span>
+      <span>Env: ${design.environment.replaceAll('_', ' ')} | Alt: ${describeAltitude(design.altitudeBand)} | Temp: ${describeTemperature(design.temperatureBand)}</span>
+    `;
+    entry.appendChild(meta);
+
+    if (design.roles?.length) {
+      const roleRow = document.createElement('div');
+      design.roles.forEach((role) => {
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.textContent = formatRoleLabel(role);
+        roleRow.appendChild(tag);
+      });
+      entry.appendChild(roleRow);
+    }
+
+    const actions = document.createElement('div');
+    actions.style.display = 'flex';
+    actions.style.justifyContent = 'space-between';
+    actions.style.alignItems = 'center';
+    actions.style.marginTop = '0.35rem';
+
+    const roleLabel = document.createElement('span');
+    roleLabel.className = 'muted small';
+    roleLabel.textContent = design.recommendedRole || '';
+    actions.appendChild(roleLabel);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'delete-btn';
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.addEventListener('click', () => deleteDesign(design.id));
+    actions.appendChild(deleteBtn);
+
+    entry.appendChild(actions);
+    container.appendChild(entry);
+  });
+}
+
+function deleteDesign(id) {
+  savedDesigns = savedDesigns.filter((design) => design.id !== id);
+  persistDesigns();
+  renderDesignsList();
+}
+
+function handleSaveDesign() {
+  if (!lastEvaluation) {
+    showError('Evaluate a node before saving.');
+    return;
+  }
+
+  const nameInput = document.getElementById('node-name');
+  const notesInput = document.getElementById('node-notes');
+  const name = (nameInput?.value || '').trim() || `Node design ${savedDesigns.length + 1}`;
+  const notes = (notesInput?.value || '').trim();
+  const roles = getSelectedRoles();
+
+  const { nodeConfig } = lastEvaluation;
+  const design = {
+    id: `design-${Date.now()}`,
+    name,
+    notes,
+    roles,
+    environment: nodeConfig.environment,
+    altitudeBand: nodeConfig.altitudeBand,
+    temperatureBand: nodeConfig.temperatureBand,
+    totalPowerW: Number(lastEvaluation.totalPowerW.toFixed(2)),
+    idealRuntimeHours: Number(lastEvaluation.idealRuntimeHours.toFixed(2)),
+    adjustedRuntimeHours: Number(lastEvaluation.adjustedRuntimeHours.toFixed(2)),
+    capacityFactor: Number(lastEvaluation.capacityFactor.toFixed(2)),
+    totalWeightKg: Number(lastEvaluation.totalWeightKg.toFixed(2)),
+    capabilities: lastEvaluation.capabilities,
+    recommendedRole: lastEvaluation.recommendedRole,
+    rangeInfo: lastEvaluation.rangeInfo.map((info) => ({
+      radio: { id: info.radio.id, name: info.radio.name, type: info.radio.radio_type },
+      antenna: { id: info.antenna.id, name: info.antenna.name },
+      range: info.range,
+    })),
+    parts: {
+      compute: { id: nodeConfig.compute.id, name: nodeConfig.compute.name },
+      battery: { id: nodeConfig.battery.id, name: nodeConfig.battery.name, capacity_wh: nodeConfig.battery.capacity_wh },
+      sensors: (nodeConfig.sensors || []).map((s) => ({ id: s.id, name: s.name })),
+      rfChains: (nodeConfig.rfChains || []).map((chain) => ({
+        radio: { id: chain.radio.id, name: chain.radio.name, radio_type: chain.radio.radio_type },
+        antenna: { id: chain.antenna.id, name: chain.antenna.name },
+      })),
+    },
+  };
+
+  savedDesigns.push(design);
+  persistDesigns();
+  renderDesignsList();
+
   const panel = document.getElementById('results-panel');
-  const { compute, battery, sensors, rfChains, environment } = nodeConfig;
+  const confirmation = document.createElement('div');
+  confirmation.className = 'warning-note';
+  confirmation.textContent = 'Design saved locally. Use Export Node Designs to download JSON.';
+  panel.appendChild(confirmation);
+}
+
+function exportDesigns() {
+  if (!savedDesigns.length) {
+    showError('Save at least one design before exporting.');
+    return;
+  }
+
+  const payload = {
+    schema: 'ceradon_node_designs_v1',
+    generated_at: new Date().toISOString(),
+    nodes: savedDesigns.map((design) => ({
+      id: design.id,
+      name: design.name,
+      notes: design.notes,
+      roles: design.roles,
+      environment: {
+        propagation: design.environment,
+        altitude_band: design.altitudeBand,
+        temperature_band: design.temperatureBand,
+      },
+      totals: {
+        total_weight_kg: design.totalWeightKg,
+        ideal_runtime_hours: design.idealRuntimeHours,
+        adjusted_runtime_hours: design.adjustedRuntimeHours,
+        total_power_w: design.totalPowerW,
+        capacity_factor: design.capacityFactor,
+      },
+      parts: design.parts,
+      radios: design.parts.rfChains.map((chain) => chain.radio),
+      antennas: design.parts.rfChains.map((chain) => chain.antenna),
+      capabilities: design.capabilities,
+      recommended_role: design.recommendedRole,
+    })),
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = 'ceradon_node_designs.json';
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function renderResults({
+  nodeConfig,
+  totalPowerW,
+  idealRuntimeHours,
+  adjustedRuntimeHours,
+  rangeInfo,
+  capabilities,
+  recommendedRole,
+  warnings,
+  totalWeightKg,
+  capacityFactor,
+  selectedRoles,
+  nodeName,
+  nodeNotes,
+}) {
+  const panel = document.getElementById('results-panel');
+  const { compute, battery, sensors, rfChains, environment, altitudeBand, temperatureBand } = nodeConfig;
 
   const sensorNames = sensors.length ? sensors.map((s) => s.name).join(', ') : 'None selected';
-  const summaryRuntime = runtimeHours > 0 ? `${runtimeHours.toFixed(1)} h` : 'N/A';
+  const idealRuntime = idealRuntimeHours > 0 ? `${idealRuntimeHours.toFixed(1)} h` : 'N/A';
+  const adjustedRuntime = adjustedRuntimeHours > 0 ? `${adjustedRuntimeHours.toFixed(1)} h` : 'N/A';
   const summaryRole = recommendedRole || 'N/A';
 
   const rfList = rangeInfo
@@ -587,26 +1077,40 @@ function renderResults({ nodeConfig, totalPowerW, runtimeHours, rangeInfo, capab
     .map((note) => `<div class="warning-note">${note}</div>`) // eslint-disable-line quotes
     .join('');
 
+  const roleTags = selectedRoles
+    .map((role) => `<span class="tag">${formatRoleLabel(role)}</span>`)
+    .join('');
+
   panel.innerHTML = `
     <h2>Results</h2>
     <div class="summary-bar">
       <div class="summary-block">
-        <div class="summary-label">Est. runtime</div>
-        <div class="summary-value">${summaryRuntime}</div>
+        <div class="summary-label">Ideal runtime</div>
+        <div class="summary-value">${idealRuntime}</div>
       </div>
       <div class="summary-block">
-        <div class="summary-label">Recommended role</div>
-        <div class="summary-value">${summaryRole}</div>
+        <div class="summary-label">Adjusted runtime</div>
+        <div class="summary-value">${adjustedRuntime}</div>
+        <div class="muted small">Capacity factor: ${(capacityFactor * 100).toFixed(0)}%</div>
+      </div>
+      <div class="summary-block">
+        <div class="summary-label">Weight</div>
+        <div class="summary-value">${totalWeightKg.toFixed(2)} kg</div>
+        <div class="muted small">${summaryRole}</div>
       </div>
     </div>
     <div class="result-section">
       <h3>Core</h3>
+      <p class="result-line"><span class="result-label">Name:</span> ${nodeName || 'Unnamed build'}</p>
       <p class="result-line"><span class="result-label">Compute:</span> ${compute.name}</p>
       <p class="result-line"><span class="result-label">Battery:</span> ${battery.name}</p>
-      <p class="result-line"><span class="result-label">Environment:</span> ${environment.split('_').join(' ')}</p>
+      <p class="result-line"><span class="result-label">Environment:</span> ${environment.split('_').join(' ')} | Alt: ${describeAltitude(altitudeBand)} | Temp: ${describeTemperature(temperatureBand)}</p>
+      <p class="result-line"><span class="result-label">Roles:</span> ${roleTags || 'No roles tagged'}</p>
       <p class="result-line"><span class="result-label">Sensors:</span> ${sensorNames}</p>
       <p class="result-line"><span class="result-label">Total power:</span> ${totalPowerW.toFixed(2)} W</p>
-      <p class="result-line"><span class="result-label">Estimated runtime:</span> ${summaryRuntime}</p>
+      <p class="result-line"><span class="result-label">Ideal runtime:</span> ${idealRuntime}</p>
+      <p class="result-line"><span class="result-label">Adjusted runtime:</span> ${adjustedRuntime}</p>
+      ${nodeNotes ? `<p class="result-line"><span class="result-label">Notes:</span> ${nodeNotes}</p>` : ''}
     </div>
     <div class="result-section">
       <h3>RF Chains</h3>
@@ -621,7 +1125,10 @@ function renderResults({ nodeConfig, totalPowerW, runtimeHours, rangeInfo, capab
       <h3>Warnings</h3>
       ${warningBlocks || '<p class="muted small">No warnings.</p>'}
     </div>
+    <button id="save-design-btn" class="secondary-btn" type="button">Save node design</button>
   `;
+
+  document.getElementById('save-design-btn').addEventListener('click', handleSaveDesign);
 }
 
 function showError(message) {
