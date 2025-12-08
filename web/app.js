@@ -2,6 +2,7 @@ let components = null;
 let lastPresetWarnings = [];
 let savedDesigns = [];
 let lastEvaluation = null;
+let missionName = 'Project WHITEFROST Demo';
 
 const STORAGE_KEYS = {
   designs: 'ceradonSavedDesigns',
@@ -34,7 +35,39 @@ const environmentRangeFactor = {
   rural_open: 1.0,
 };
 
+function deriveRfBands(radio) {
+  if (!radio) return [];
+  if (radio.bands && radio.bands.length) {
+    return radio.bands.map((band) => band.toLowerCase());
+  }
+  if (radio.band) {
+    return radio.band
+      .split('/')
+      .map((band) => band.trim())
+      .filter(Boolean)
+      .map((band) => band.toLowerCase());
+  }
+  if (radio.radio_type) return [radio.radio_type.toLowerCase()];
+  return [];
+}
+
 const PRESETS = [
+  {
+    id: 'whitefrost_demo',
+    label: 'WHITEFROST Demo Control Node',
+    description: 'Cold-weather recon/control node for alpine quad + mesh relays.',
+    config: {
+      computeId: 'rpi5_8gb',
+      environment: 'rural_open',
+      altitudeBand: 'band_2000_3000',
+      temperatureBand: 'very_cold',
+      location: { lat: 39.55, lon: -105.78, elevation_m: 2600 },
+      missionName: 'Project WHITEFROST Demo',
+      batteryId: 'talentcell_144wh',
+      rfChains: [{ radioId: 'wifi_ax210', antennaIds: ['patch_14dbi'] }],
+      sensorIds: ['gps_usb', 'imu_i2c'],
+    },
+  },
   {
     id: 'urban_wifi_recon',
     label: 'Urban WiFi Recon Node',
@@ -106,11 +139,17 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSavedDesigns();
   loadConstraints();
   loadEnvironmentSelection();
+  document.getElementById('mission-name').value = missionName;
+  document.getElementById('mission-name').addEventListener('input', (event) => {
+    missionName = (event.target.value || '').trim() || 'Project WHITEFROST Demo';
+  });
   document.getElementById('evaluate-btn').addEventListener('click', handleEvaluate);
   document.getElementById('add-rf-chain-btn').addEventListener('click', () => addRfChain());
   document.getElementById('compute-select').addEventListener('change', () => updateRfCapacity());
   document.getElementById('preset-select').addEventListener('change', handlePresetChange);
   document.getElementById('export-designs').addEventListener('click', exportDesigns);
+  document.getElementById('whitefrost-demo').addEventListener('click', loadWhitefrostDemo);
+  document.getElementById('import-mission').addEventListener('change', handleMissionImport);
   bindConstraintInputs();
   bindEnvironmentPersistence();
 });
@@ -346,6 +385,11 @@ function loadSavedDesigns() {
       savedDesigns = [];
     }
   }
+  if (savedDesigns.length && savedDesigns[0].missionName) {
+    missionName = savedDesigns[0].missionName;
+    const missionInput = document.getElementById('mission-name');
+    if (missionInput) missionInput.value = missionName;
+  }
   renderDesignsList();
 }
 
@@ -378,6 +422,22 @@ function applyPreset(preset) {
   setSelectValue('compute-select', computeId, catalog.compute, 'compute');
   setSelectValue('battery-select', batteryId, catalog.batteries, 'battery');
   setEnvironment(environment);
+  if (preset.config.altitudeBand) {
+    document.getElementById('altitude-select').value = preset.config.altitudeBand;
+  }
+  if (preset.config.temperatureBand) {
+    document.getElementById('temperature-select').value = preset.config.temperatureBand;
+  }
+  if (preset.config.location) {
+    const { lat, lon, elevation_m: elevation } = preset.config.location;
+    document.getElementById('lat-input').value = lat ?? '';
+    document.getElementById('lon-input').value = lon ?? '';
+    document.getElementById('elevation-input').value = elevation ?? '';
+  }
+  if (preset.config.missionName) {
+    missionName = preset.config.missionName;
+    document.getElementById('mission-name').value = missionName;
+  }
   setSensors(sensorIds);
 
   const container = document.getElementById('rf-chains-container');
@@ -515,6 +575,19 @@ function handleEvaluate() {
   const nodeName = (document.getElementById('node-name').value || '').trim();
   const nodeNotes = (document.getElementById('node-notes').value || '').trim();
   const selectedRoles = getSelectedRoles();
+  missionName = (document.getElementById('mission-name').value || '').trim() || missionName;
+
+  const lat = parseFloat(document.getElementById('lat-input').value);
+  const lon = parseFloat(document.getElementById('lon-input').value);
+  const elevation = parseFloat(document.getElementById('elevation-input').value);
+  const location = {};
+  if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
+    location.lat = lat;
+    location.lon = lon;
+  }
+  if (!Number.isNaN(elevation)) {
+    location.elevation_m = elevation;
+  }
 
   persistEnvironmentSelection();
 
@@ -546,6 +619,7 @@ function handleEvaluate() {
     environment,
     altitudeBand,
     temperatureBand,
+    location,
   };
 
   const totalPowerW = estimatePower(nodeConfig);
@@ -579,6 +653,8 @@ function handleEvaluate() {
     notes: nodeNotes,
     roles: selectedRoles,
     nodeConfig,
+    missionName,
+    location,
     totalPowerW,
     idealRuntimeHours,
     adjustedRuntimeHours,
@@ -898,6 +974,8 @@ function renderDesignsList() {
       <span>Adjusted runtime: ${design.adjustedRuntimeHours.toFixed(1)} h</span>
       <span>Total weight: ${design.totalWeightKg.toFixed(2)} kg</span>
       <span>Env: ${design.environment.replaceAll('_', ' ')} | Alt: ${describeAltitude(design.altitudeBand)} | Temp: ${describeTemperature(design.temperatureBand)}</span>
+      ${design.location && design.location.lat !== undefined ? `<span>Loc: ${design.location.lat.toFixed(3)}, ${design.location.lon.toFixed(3)}${design.location.elevation_m ? ` (${design.location.elevation_m} m)` : ''}</span>` : ''}
+      <span>Mission: ${design.missionName || missionName}</span>
     `;
     entry.appendChild(meta);
 
@@ -958,10 +1036,13 @@ function handleSaveDesign() {
     id: `design-${Date.now()}`,
     name,
     notes,
+    missionName,
+    originTool: 'node',
     roles,
     environment: nodeConfig.environment,
     altitudeBand: nodeConfig.altitudeBand,
     temperatureBand: nodeConfig.temperatureBand,
+    location: nodeConfig.location,
     totalPowerW: Number(lastEvaluation.totalPowerW.toFixed(2)),
     idealRuntimeHours: Number(lastEvaluation.idealRuntimeHours.toFixed(2)),
     adjustedRuntimeHours: Number(lastEvaluation.adjustedRuntimeHours.toFixed(2)),
@@ -974,13 +1055,34 @@ function handleSaveDesign() {
       antenna: { id: info.antenna.id, name: info.antenna.name },
       range: info.range,
     })),
+    rfBands: nodeConfig.rfChains.flatMap((chain) => deriveRfBands(chain.radio)),
     parts: {
-      compute: { id: nodeConfig.compute.id, name: nodeConfig.compute.name },
-      battery: { id: nodeConfig.battery.id, name: nodeConfig.battery.name, capacity_wh: nodeConfig.battery.capacity_wh },
-      sensors: (nodeConfig.sensors || []).map((s) => ({ id: s.id, name: s.name })),
+      compute: {
+        id: nodeConfig.compute.id,
+        name: nodeConfig.compute.name,
+        cpu: nodeConfig.compute.cpu,
+        ram_gb: nodeConfig.compute.ram_gb,
+        storage: nodeConfig.compute.storage,
+        power_w_idle: nodeConfig.compute.power_w_idle,
+        power_w_load: nodeConfig.compute.power_w_load,
+        weight_kg: nodeConfig.compute.weight_kg,
+      },
+      battery: {
+        id: nodeConfig.battery.id,
+        name: nodeConfig.battery.name,
+        capacity_wh: nodeConfig.battery.capacity_wh,
+        chemistry: nodeConfig.battery.chemistry,
+      },
+      sensors: (nodeConfig.sensors || []).map((s) => ({ id: s.id, name: s.name, sensor_type: s.sensor_type })),
       rfChains: (nodeConfig.rfChains || []).map((chain) => ({
-        radio: { id: chain.radio.id, name: chain.radio.name, radio_type: chain.radio.radio_type },
-        antenna: { id: chain.antenna.id, name: chain.antenna.name },
+        radio: {
+          id: chain.radio.id,
+          name: chain.radio.name,
+          radio_type: chain.radio.radio_type,
+          band: chain.radio.band || chain.radio.bands?.join('/'),
+          bands: chain.radio.bands,
+        },
+        antenna: { id: chain.antenna.id, name: chain.antenna.name, gain_dbi: chain.antenna.gain_dbi },
       })),
     },
   };
@@ -1002,41 +1104,261 @@ function exportDesigns() {
     return;
   }
 
-  const payload = {
-    schema: 'ceradon_node_designs_v1',
-    generated_at: new Date().toISOString(),
-    nodes: savedDesigns.map((design) => ({
-      id: design.id,
-      name: design.name,
-      notes: design.notes,
-      roles: design.roles,
-      environment: {
-        propagation: design.environment,
-        altitude_band: design.altitudeBand,
-        temperature_band: design.temperatureBand,
-      },
-      totals: {
-        total_weight_kg: design.totalWeightKg,
-        ideal_runtime_hours: design.idealRuntimeHours,
-        adjusted_runtime_hours: design.adjustedRuntimeHours,
-        total_power_w: design.totalPowerW,
-        capacity_factor: design.capacityFactor,
-      },
-      parts: design.parts,
-      radios: design.parts.rfChains.map((chain) => chain.radio),
-      antennas: design.parts.rfChains.map((chain) => chain.antenna),
-      capabilities: design.capabilities,
-      recommended_role: design.recommendedRole,
-    })),
-  };
+  const payload = buildMissionProjectPayload();
 
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
-  anchor.download = 'ceradon_node_designs.json';
+  anchor.download = 'mission_project.json';
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+function buildConstraintsPayload() {
+  const constraints = [];
+  if (activeConstraints.maxWeight) {
+    constraints.push({ id: 'constraint-weight', type: 'max_weight_kg', value: activeConstraints.maxWeight });
+  }
+  if (activeConstraints.minRuntime) {
+    constraints.push({ id: 'constraint-runtime', type: 'min_runtime_hours', value: activeConstraints.minRuntime });
+  }
+  if (activeConstraints.requiredRoles && activeConstraints.requiredRoles.length) {
+    constraints.push({ id: 'constraint-roles', type: 'required_roles', value: activeConstraints.requiredRoles });
+  }
+  return constraints;
+}
+
+function buildMissionProjectPayload() {
+  const platforms = {};
+  const nodes = savedDesigns
+    .map((design) => {
+      if (!design.parts?.compute || !design.parts?.battery) return null;
+      const platformId = `platform-${design.parts.compute.id}`;
+      const compute = design.parts.compute;
+      if (!platforms[platformId]) {
+      platforms[platformId] = {
+        id: platformId,
+        name: compute.name,
+        role: 'compute',
+        origin_tool: design.originTool || 'node',
+        specs: {
+          cpu: compute.cpu,
+          ram_gb: compute.ram_gb,
+          storage: compute.storage,
+          power_idle_w: compute.power_w_idle,
+          power_load_w: compute.power_w_load,
+          weight_kg: compute.weight_kg,
+        },
+      };
+      }
+
+      const nodeEntry = {
+        id: design.id,
+        name: design.name,
+      origin_tool: design.originTool || 'node',
+      platform_id: platformId,
+      roles: design.roles || [],
+      rf_bands: design.rfBands || [],
+      power_profile: {
+        estimated_draw_w: design.totalPowerW,
+        ideal_runtime_h: design.idealRuntimeHours,
+        adjusted_runtime_h: design.adjustedRuntimeHours,
+        capacity_factor: design.capacityFactor,
+      },
+      battery: {
+        id: design.parts.battery.id,
+        capacity_wh: design.parts.battery.capacity_wh,
+        chemistry: design.parts.battery.chemistry,
+      },
+      environment: {
+        propagation: design.environment,
+        altitude_band: design.altitudeBand,
+        temperature_band: design.temperatureBand,
+      },
+      capabilities: design.capabilities,
+      recommended_role: design.recommendedRole,
+      parts: {
+        host_id: design.parts.compute.id,
+        battery_id: design.parts.battery.id,
+        rf_chains: design.parts.rfChains.map((chain) => ({
+          radio_id: chain.radio.id,
+          antenna_id: chain.antenna.id,
+        })),
+        sensor_ids: (design.parts.sensors || []).map((sensor) => sensor.id),
+      },
+      notes: design.notes,
+    };
+
+      if (design.location && design.location.lat !== undefined && design.location.lon !== undefined) {
+        nodeEntry.location = {
+          lat: Number(design.location.lat),
+          lon: Number(design.location.lon),
+          elevation_m: design.location.elevation_m,
+        };
+      }
+
+      return nodeEntry;
+    })
+    .filter(Boolean);
+
+  return {
+    schema: 'mission_project_v1',
+    origin_tool: 'node',
+    generated_at: new Date().toISOString(),
+    mission: { name: missionName || 'Node Architect export', ao: 'Project WHITEFROST Demo' },
+    environment: nodes[0]?.environment || {},
+    constraints: buildConstraintsPayload(),
+    platforms: Object.values(platforms),
+    nodes,
+    mesh_links: [],
+    kits: [],
+  };
+}
+
+async function handleMissionImport(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const project = JSON.parse(text);
+    importMissionProject(project);
+  } catch (error) {
+    showError(`Failed to import MissionProject: ${error.message}`);
+  } finally {
+    event.target.value = '';
+  }
+}
+
+async function loadWhitefrostDemo() {
+  try {
+    const response = await fetch('whitefrost_demo.mission.json');
+    if (!response.ok) throw new Error('Unable to load WHITEFROST demo file');
+    const project = await response.json();
+    importMissionProject(project);
+    missionName = project.mission?.name || missionName;
+    document.getElementById('mission-name').value = missionName;
+    clearError();
+  } catch (error) {
+    showError(`WHITEFROST demo unavailable: ${error.message}`);
+  }
+}
+
+function importMissionProject(project) {
+  if (!components) {
+    showError('Component catalog not loaded yet.');
+    return;
+  }
+
+  const catalog = getCatalog();
+  const designs = [];
+  const warnings = [];
+
+  (project.nodes || []).forEach((node, idx) => {
+    const parts = node.parts || {};
+    const rfChains = parts.rf_chains || [];
+    const primaryChain = rfChains[0] || {};
+    const compute = catalog.compute.find((item) => item.id === parts.host_id);
+    const battery = catalog.batteries.find((item) => item.id === parts.battery_id);
+    const radio = catalog.radios.find((item) => item.id === primaryChain.radio_id);
+    const antenna = catalog.antennas.find((item) => item.id === primaryChain.antenna_id);
+    const sensors = (parts.sensor_ids || [])
+      .map((sid) => catalog.sensors.find((sensor) => sensor.id === sid))
+      .filter(Boolean);
+
+    if (!compute || !battery || !radio || !antenna) {
+      warnings.push(`Skipping node ${node.id || idx} due to missing components.`);
+      return;
+    }
+
+    const powerProfile = node.power_profile || {};
+    const environment = node.environment || {};
+    const rfBands = node.rf_bands || deriveRfBands(radio);
+    const rangeHints = node.mesh_hints || [];
+
+    const design = {
+      id: node.id || `imported-${idx}`,
+      name: node.name || `Imported node ${idx + 1}`,
+      missionName: project.mission?.name || missionName,
+      originTool: node.origin_tool || project.origin_tool || 'node',
+      roles: node.roles || [],
+      environment: environment.propagation || 'rural_open',
+      altitudeBand: environment.altitude_band || 'sea_level',
+      temperatureBand: environment.temperature_band || 'temperate',
+      location: node.location,
+      totalPowerW: Number(powerProfile.estimated_draw_w || 0),
+      idealRuntimeHours: Number(powerProfile.ideal_runtime_h || powerProfile.adjusted_runtime_h || 0),
+      adjustedRuntimeHours: Number(powerProfile.adjusted_runtime_h || powerProfile.ideal_runtime_h || 0),
+      capacityFactor: Number(powerProfile.capacity_factor || 1.0),
+      totalWeightKg: Number(compute.weight_kg || 0) + Number(battery.mass_kg || 0),
+      capabilities: node.capabilities || [],
+      recommendedRole: node.recommended_role || '',
+      rfBands,
+      rangeInfo: rfChains.map((chain, chainIdx) => {
+        const chainRadio = catalog.radios.find((item) => item.id === chain.radio_id) || radio;
+        const chainAntenna = catalog.antennas.find((item) => item.id === chain.antenna_id) || antenna;
+        return {
+          radio: { id: chainRadio.id, name: chainRadio.name, type: chainRadio.radio_type },
+          antenna: { id: chainAntenna.id, name: chainAntenna.name },
+          range: rangeHints[chainIdx]
+            ? { range_km: rangeHints[chainIdx].estimated_range_km, description: rangeHints[chainIdx].band }
+            : { description: 'Range not provided' },
+        };
+      }),
+      parts: {
+        compute: {
+          id: compute.id,
+          name: compute.name,
+          cpu: compute.cpu,
+          ram_gb: compute.ram_gb,
+          storage: compute.storage,
+          power_w_idle: compute.power_w_idle,
+          power_w_load: compute.power_w_load,
+          weight_kg: compute.weight_kg,
+        },
+        battery: {
+          id: battery.id,
+          name: battery.name,
+          capacity_wh: battery.capacity_wh,
+          chemistry: battery.chemistry,
+        },
+        sensors: sensors.map((s) => ({ id: s.id, name: s.name, sensor_type: s.sensor_type })),
+        rfChains: rfChains.map((chain) => {
+          const chainRadio = catalog.radios.find((item) => item.id === chain.radio_id) || radio;
+          const chainAntenna = catalog.antennas.find((item) => item.id === chain.antenna_id) || antenna;
+          return {
+            radio: {
+              id: chainRadio.id,
+              name: chainRadio.name,
+              radio_type: chainRadio.radio_type,
+              band: chainRadio.band,
+              bands: chainRadio.bands,
+            },
+            antenna: { id: chainAntenna.id, name: chainAntenna.name, gain_dbi: chainAntenna.gain_dbi },
+          };
+        }),
+      },
+    };
+
+    designs.push(design);
+  });
+
+  if (!designs.length) {
+    showError('No usable nodes found in MissionProject payload.');
+    return;
+  }
+
+  missionName = project.mission?.name || missionName;
+  document.getElementById('mission-name').value = missionName;
+  savedDesigns = designs;
+  persistDesigns();
+  renderDesignsList();
+  clearError();
+
+  if (warnings.length) {
+    showError(warnings.join(' '));
+  }
 }
 
 function renderResults({
@@ -1055,7 +1377,7 @@ function renderResults({
   nodeNotes,
 }) {
   const panel = document.getElementById('results-panel');
-  const { compute, battery, sensors, rfChains, environment, altitudeBand, temperatureBand } = nodeConfig;
+  const { compute, battery, sensors, rfChains, environment, altitudeBand, temperatureBand, location = {} } = nodeConfig;
 
   const sensorNames = sensors.length ? sensors.map((s) => s.name).join(', ') : 'None selected';
   const idealRuntime = idealRuntimeHours > 0 ? `${idealRuntimeHours.toFixed(1)} h` : 'N/A';
@@ -1067,6 +1389,8 @@ function renderResults({
       const envLabel = environment.split('_').join(' ');
       const rangeText = info.range.range_m
         ? `~${info.range.range_m} m ${envLabel} (${info.range.description})`
+        : info.range.range_km
+        ? `~${info.range.range_km} km ${envLabel} (${info.range.description})`
         : info.range.description;
       return `<li><strong>Chain ${idx + 1}:</strong> ${info.radio.name} + ${info.antenna.name} → ${rangeText}</li>`;
     })
@@ -1105,6 +1429,7 @@ function renderResults({
       <p class="result-line"><span class="result-label">Compute:</span> ${compute.name}</p>
       <p class="result-line"><span class="result-label">Battery:</span> ${battery.name}</p>
       <p class="result-line"><span class="result-label">Environment:</span> ${environment.split('_').join(' ')} | Alt: ${describeAltitude(altitudeBand)} | Temp: ${describeTemperature(temperatureBand)}</p>
+      ${location.lat !== undefined && location.lon !== undefined ? `<p class="result-line"><span class="result-label">Location:</span> ${location.lat.toFixed(4)}, ${location.lon.toFixed(4)}${location.elevation_m ? ` (${location.elevation_m} m)` : ''}</p>` : ''}
       <p class="result-line"><span class="result-label">Roles:</span> ${roleTags || 'No roles tagged'}</p>
       <p class="result-line"><span class="result-label">Sensors:</span> ${sensorNames}</p>
       <p class="result-line"><span class="result-label">Total power:</span> ${totalPowerW.toFixed(2)} W</p>
