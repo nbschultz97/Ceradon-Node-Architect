@@ -5,107 +5,230 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ceradon Node Architect</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    #access-gate {
+      max-width: 720px;
+      margin: 48px auto;
+      padding: 32px;
+      background: #f8f9fb;
+      border: 1px solid #e1e5eb;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+    }
+
+    #access-gate h1 {
+      margin: 0 0 8px;
+      font-size: 1.8rem;
+    }
+
+    #access-gate p {
+      margin: 0 0 16px;
+      color: #4b5563;
+    }
+
+    #access-gate label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    #access-gate input[type="password"] {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    #access-gate button {
+      margin-top: 12px;
+      padding: 12px 18px;
+      font-size: 1rem;
+      font-weight: 700;
+      background: #0f172a;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    #access-gate button:hover {
+      background: #111827;
+    }
+
+    .error-message {
+      display: none;
+      margin-top: 10px;
+      color: #b91c1c;
+      font-size: 0.95rem;
+    }
+  </style>
 </head>
 <body>
-  <header class="page-header">
-    <div class="container">
-      <h1>Ceradon Node Architect</h1>
-      <p class="lead">Assemble low-power RF and sensor nodes, explore presets, and estimate draw, runtime, and range entirely in the browser.</p>
-    </div>
-  </header>
+  <div id="access-gate" role="region" aria-labelledby="access-gate-title">
+    <h1 id="access-gate-title">Ceradon Systems — Ceradon Node Architect Demo</h1>
+    <p>Enter your demo access code to continue.</p>
+    <label for="demo-code">Access code</label>
+    <input id="demo-code" type="password" name="access-code" autocomplete="off" inputmode="numeric" />
+    <button id="demo-enter" type="button">Enter</button>
+    <div id="demo-error" class="error-message" aria-live="polite">Invalid code.</div>
+  </div>
 
-  <main class="container layout">
-    <section class="card" id="config-card">
-      <h2>Configure node</h2>
-      <div id="error-banner" class="error-banner" role="alert" aria-live="polite"></div>
+  <div id="app-root" style="display: none;">
+    <header class="page-header">
+      <div class="container">
+        <h1>Ceradon Node Architect</h1>
+        <p class="lead">Assemble low-power RF and sensor nodes, explore presets, and estimate draw, runtime, and range entirely in the browser.</p>
+      </div>
+    </header>
 
-      <div class="fieldset">
-        <div class="fieldset-header">
-          <div>
-            <p class="eyebrow">Presets</p>
-            <h3>Common node templates</h3>
+    <main class="container layout">
+      <section class="card" id="config-card">
+        <h2>Configure node</h2>
+        <div id="error-banner" class="error-banner" role="alert" aria-live="polite"></div>
+
+        <div class="fieldset">
+          <div class="fieldset-header">
+            <div>
+              <p class="eyebrow">Presets</p>
+              <h3>Common node templates</h3>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="preset-select">Preset</label>
+            <select id="preset-select">
+              <option value="">Custom (no preset)</option>
+            </select>
+            <p id="preset-description" class="muted small">Pick a preset to pre-fill radios, antennas, and sensors.</p>
           </div>
         </div>
-        <div class="form-group">
-          <label for="preset-select">Preset</label>
-          <select id="preset-select">
-            <option value="">Custom (no preset)</option>
-          </select>
-          <p id="preset-description" class="muted small">Pick a preset to pre-fill radios, antennas, and sensors.</p>
-        </div>
-      </div>
 
-      <div class="fieldset">
-        <div class="fieldset-header">
-          <div>
-            <p class="eyebrow">Compute</p>
-            <h3>Host platform</h3>
+        <div class="fieldset">
+          <div class="fieldset-header">
+            <div>
+              <p class="eyebrow">Compute</p>
+              <h3>Host platform</h3>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="compute-select">Compute host</label>
+            <select id="compute-select">
+              <option value="">Select compute</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="battery-select">Battery</label>
+            <select id="battery-select">
+              <option value="">Select battery</option>
+            </select>
           </div>
         </div>
-        <div class="form-group">
-          <label for="compute-select">Compute host</label>
-          <select id="compute-select">
-            <option value="">Select compute</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="battery-select">Battery</label>
-          <select id="battery-select">
-            <option value="">Select battery</option>
-          </select>
-        </div>
-      </div>
 
-      <div class="fieldset">
-        <div class="fieldset-header">
-          <div>
-            <p class="eyebrow">RF Chains</p>
-            <h3>Radios and antennas</h3>
-            <p class="muted small">Add one or more RF chains. Capacity is limited by the selected host.</p>
+        <div class="fieldset">
+          <div class="fieldset-header">
+            <div>
+              <p class="eyebrow">RF Chains</p>
+              <h3>Radios and antennas</h3>
+              <p class="muted small">Add one or more RF chains. Capacity is limited by the selected host.</p>
+            </div>
+            <button id="add-rf-chain-btn" class="ghost-btn" type="button">+ Add RF Chain</button>
           </div>
-          <button id="add-rf-chain-btn" class="ghost-btn" type="button">+ Add RF Chain</button>
+          <div id="rf-chains-container" class="rf-chains"></div>
+          <p id="rf-chain-count" class="muted small">RF chains: 0 / 0 available</p>
         </div>
-        <div id="rf-chains-container" class="rf-chains"></div>
-        <p id="rf-chain-count" class="muted small">RF chains: 0 / 0 available</p>
-      </div>
 
-      <div class="fieldset">
-        <div class="fieldset-header">
-          <div>
-            <p class="eyebrow">Sensors</p>
-            <h3>Payload</h3>
+        <div class="fieldset">
+          <div class="fieldset-header">
+            <div>
+              <p class="eyebrow">Sensors</p>
+              <h3>Payload</h3>
+            </div>
           </div>
+          <div id="sensors-container" class="sensor-checkboxes"></div>
         </div>
-        <div id="sensors-container" class="sensor-checkboxes"></div>
-      </div>
 
-      <div class="fieldset">
-        <div class="fieldset-header">
-          <div>
-            <p class="eyebrow">Environment</p>
-            <h3>Operating conditions</h3>
+        <div class="fieldset">
+          <div class="fieldset-header">
+            <div>
+              <p class="eyebrow">Environment</p>
+              <h3>Operating conditions</h3>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="environment-select">Environment</label>
+            <select id="environment-select">
+              <option value="lab">Lab</option>
+              <option value="urban_indoor">Urban indoor</option>
+              <option value="urban_outdoor">Urban outdoor</option>
+              <option value="rural_open">Rural open</option>
+            </select>
           </div>
         </div>
-        <div class="form-group">
-          <label for="environment-select">Environment</label>
-          <select id="environment-select">
-            <option value="lab">Lab</option>
-            <option value="urban_indoor">Urban indoor</option>
-            <option value="urban_outdoor">Urban outdoor</option>
-            <option value="rural_open">Rural open</option>
-          </select>
-        </div>
-      </div>
 
-      <button id="evaluate-btn" class="primary-btn" type="button">Evaluate node</button>
-    </section>
+        <button id="evaluate-btn" class="primary-btn" type="button">Evaluate node</button>
+      </section>
 
-    <section class="card" id="results-panel">
-      <h2>Results</h2>
-      <div class="muted small">Load components and evaluate a configuration to see estimates.</div>
-    </section>
-  </main>
+      <section class="card" id="results-panel">
+        <h2>Results</h2>
+        <div class="muted small">Load components and evaluate a configuration to see estimates.</div>
+      </section>
+    </main>
+  </div>
 
   <script src="app.js"></script>
+  <script>
+    (function () {
+      const ACCESS_CODE = "NODE-GRID-429";
+      const STORAGE_KEY = "ceradonDemoAuthorized";
+
+      function toggleVisibility(showApp) {
+        const appRoot = document.getElementById("app-root");
+        const accessGate = document.getElementById("access-gate");
+        if (showApp) {
+          appRoot.style.display = "block";
+          accessGate.style.display = "none";
+        } else {
+          appRoot.style.display = "none";
+          accessGate.style.display = "block";
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const input = document.getElementById("demo-code");
+        const button = document.getElementById("demo-enter");
+        const error = document.getElementById("demo-error");
+
+        if (localStorage.getItem(STORAGE_KEY) === "true") {
+          toggleVisibility(true);
+          return;
+        }
+
+        toggleVisibility(false);
+
+        function validate() {
+          const value = (input.value || "").trim();
+          if (value === ACCESS_CODE) {
+            localStorage.setItem(STORAGE_KEY, "true");
+            error.style.display = "none";
+            toggleVisibility(true);
+          } else {
+            error.style.display = "block";
+          }
+        }
+
+        button.addEventListener("click", validate);
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            validate();
+          }
+        });
+      });
+    })();
+  </script>
 </body>
 </html>
