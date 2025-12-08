@@ -4,11 +4,12 @@ import argparse
 import json
 import pathlib
 import sys
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from .data_loader import find_by_id, load_components
 from .estimator import estimate_node, format_report
 from .models import NodeBuild
+from .mission_project import assemble_project, parse_project, project_to_builds, to_cot_stub, to_geojson
 
 PRESET_DIR = pathlib.Path(__file__).resolve().parents[2] / "sample_builds"
 
@@ -36,6 +37,14 @@ def parse_build(config_path: pathlib.Path):
     )
 
 
+def _build_and_estimate(config_path: pathlib.Path, environment_override: Optional[str] = None) -> Tuple[NodeBuild, object]:
+    build = parse_build(config_path)
+    if environment_override:
+        build.environment = environment_override
+    estimate = estimate_node(build)
+    return build, estimate
+
+
 def list_components():
     inventory = load_components()
     for key, items in inventory.items():
@@ -59,6 +68,75 @@ def simulate(config_path: pathlib.Path):
     estimate = estimate_node(build)
     report = format_report(build, estimate)
     print(report)
+
+
+def export_mission_project(
+    config_path: pathlib.Path,
+    output_path: pathlib.Path,
+    mission_name: str,
+    altitude_band: str,
+    temperature_band: str,
+    environment_override: Optional[str] = None,
+    lat: Optional[float] = None,
+    lon: Optional[float] = None,
+    elevation_m: Optional[float] = None,
+):
+    build, estimate = _build_and_estimate(config_path, environment_override)
+    node_id = f"node-{config_path.stem}"
+    node_label = config_path.stem.replace("_", " ")
+    location = {
+        k: v
+        for k, v in {
+            "lat": lat,
+            "lon": lon,
+            "elevation_m": elevation_m,
+            "altitude_band": altitude_band,
+            "temperature_band": temperature_band,
+        }.items()
+        if v is not None
+    }
+    project = assemble_project(
+        [
+            (
+                node_id,
+                build,
+                estimate,
+                [estimate.recommended_role],
+                node_label,
+                location,
+            )
+        ],
+        mission={"name": mission_name or "Node Architect export", "ao": "Project WHITEFROST Demo"},
+        environment={"propagation": build.environment, "altitude_band": altitude_band, "temperature_band": temperature_band},
+    )
+    with output_path.open("w", encoding="utf-8") as handle:
+        json.dump(project, handle, indent=2)
+    print(f"MissionProject written to {output_path}")
+
+
+def import_mission_project(path: pathlib.Path, simulate: bool = False):
+    inventory = load_components()
+    project = parse_project(path)
+    builds, warnings = project_to_builds(project, inventory)
+    for warning in warnings:
+        print(f"WARNING: {warning}", file=sys.stderr)
+    for build in builds:
+        estimate = estimate_node(build) if simulate else None
+        print(format_report(build, estimate) if estimate else build.as_dict())
+
+
+def atak_export(path: pathlib.Path, geojson_path: Optional[pathlib.Path], cot_path: Optional[pathlib.Path]):
+    project = parse_project(path)
+    if geojson_path:
+        geojson = to_geojson(project)
+        with geojson_path.open("w", encoding="utf-8") as handle:
+            json.dump(geojson, handle, indent=2)
+        print(f"GeoJSON written to {geojson_path}")
+    if cot_path:
+        cot = to_cot_stub(project)
+        with cot_path.open("w", encoding="utf-8") as handle:
+            json.dump(cot, handle, indent=2)
+        print(f"CoT stub written to {cot_path}")
 
 
 def list_presets() -> List[Tuple[str, str]]:
@@ -101,6 +179,39 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Override environment assumption for range/power scaling",
     )
 
+    export_mp = sub.add_parser("export-mission", help="Export a MissionProject JSON from a build")
+    export_mp.add_argument("output", type=pathlib.Path, help="Output path for mission project JSON")
+    export_mp.add_argument("--config", type=pathlib.Path, help="Path to build JSON")
+    export_mp.add_argument("--preset", choices=preset_choices, help="Preset name from sample_builds")
+    export_mp.add_argument("--mission-name", default="Project WHITEFROST Demo")
+    export_mp.add_argument(
+        "--altitude-band",
+        default="band_2000_3000",
+        choices=["sea_level", "band_1000_2000", "band_2000_3000", "above_3000"],
+    )
+    export_mp.add_argument(
+        "--temperature-band",
+        default="very_cold",
+        choices=["hot", "temperate", "cold", "very_cold"],
+    )
+    export_mp.add_argument(
+        "--environment",
+        choices=["lab", "urban_indoor", "urban_outdoor", "rural_open", "subterranean"],
+        help="Override environment assumption",
+    )
+    export_mp.add_argument("--lat", type=float)
+    export_mp.add_argument("--lon", type=float)
+    export_mp.add_argument("--elevation-m", type=float)
+
+    import_mp = sub.add_parser("import-mission", help="Import a MissionProject JSON and list usable builds")
+    import_mp.add_argument("mission_file", type=pathlib.Path)
+    import_mp.add_argument("--simulate", action="store_true", help="Run estimator for each usable node")
+
+    atak = sub.add_parser("atak-export", help="Export GeoJSON and CoT from a MissionProject JSON")
+    atak.add_argument("mission_file", type=pathlib.Path)
+    atak.add_argument("--geojson", type=pathlib.Path, help="Output GeoJSON path")
+    atak.add_argument("--cot", type=pathlib.Path, help="Output CoT stub path")
+
     return parser
 
 
@@ -121,12 +232,29 @@ def main(argv=None):
             config_path = resolve_preset(args.preset)
         if not config_path:
             parser.error("simulate requires a config path or --preset")
-        build = parse_build(config_path)
-        if args.environment:
-            build.environment = args.environment
-        estimate = estimate_node(build)
-        report = format_report(build, estimate)
-        print(report)
+        build, estimate = _build_and_estimate(config_path, args.environment)
+        print(format_report(build, estimate))
+    elif args.command == "export-mission":
+        config_path = args.config
+        if args.preset:
+            config_path = resolve_preset(args.preset)
+        if not config_path:
+            parser.error("export-mission requires a config path or --preset")
+        export_mission_project(
+            config_path=config_path,
+            output_path=args.output,
+            mission_name=args.mission_name,
+            altitude_band=args.altitude_band,
+            temperature_band=args.temperature_band,
+            environment_override=args.environment,
+            lat=args.lat,
+            lon=args.lon,
+            elevation_m=args.elevation_m,
+        )
+    elif args.command == "import-mission":
+        import_mission_project(args.mission_file, simulate=args.simulate)
+    elif args.command == "atak-export":
+        atak_export(args.mission_file, args.geojson, args.cot)
     else:
         parser.print_help()
         return 1

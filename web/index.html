@@ -184,13 +184,13 @@
     </div>
   </section>
 
-  <div id="app-root" style="display: none;">
-    <header class="page-header">
-      <div class="container">
-        <h1>Ceradon Node Architect</h1>
-        <p class="lead">Assemble low-power RF and sensor nodes, explore presets, and estimate draw, runtime, and range entirely in the browser.</p>
-      </div>
-    </header>
+      <div id="app-root" style="display: none;">
+        <header class="page-header">
+          <div class="container">
+            <h1>Ceradon Node Architect</h1>
+            <p class="lead">Assemble low-power RF and sensor nodes, explore presets, and estimate draw, runtime, and range entirely in the browser.</p>
+          </div>
+        </header>
 
     <main class="container layout">
       <section class="card" id="config-card">
@@ -213,20 +213,24 @@
           </div>
         </div>
 
-        <div class="fieldset">
-          <div class="fieldset-header">
-            <div>
-              <p class="eyebrow">Node metadata</p>
-              <h3>Naming and role tags</h3>
-              <p class="muted small">Label the design for downstream planners and tag roles it can cover.</p>
+          <div class="fieldset">
+            <div class="fieldset-header">
+              <div>
+                <p class="eyebrow">Node metadata</p>
+                <h3>Naming and role tags</h3>
+                <p class="muted small">Label the design for downstream planners and tag roles it can cover.</p>
+              </div>
             </div>
-          </div>
-          <div class="form-group">
-            <label for="node-name">Node name</label>
-            <input id="node-name" type="text" placeholder="e.g., Urban relay node" />
-          </div>
-          <div class="form-group">
-            <label>Roles (select one or more)</label>
+            <div class="form-group">
+              <label for="mission-name">Mission/project name</label>
+              <input id="mission-name" type="text" placeholder="Project WHITEFROST Demo" />
+            </div>
+            <div class="form-group">
+              <label for="node-name">Node name</label>
+              <input id="node-name" type="text" placeholder="e.g., Urban relay node" />
+            </div>
+            <div class="form-group">
+              <label>Roles (select one or more)</label>
             <div id="role-checkboxes" class="role-checkboxes"></div>
           </div>
           <div class="form-group">
@@ -295,30 +299,44 @@
               <option value="rural_open">Rural open</option>
             </select>
           </div>
-          <div class="env-grid">
-            <div class="form-group">
-              <label for="altitude-select">Altitude band</label>
-              <select id="altitude-select">
-                <option value="sea_level">Sea level / < 500 m</option>
+            <div class="env-grid">
+              <div class="form-group">
+                <label for="altitude-select">Altitude band</label>
+                <select id="altitude-select">
+                  <option value="sea_level">Sea level / < 500 m</option>
                 <option value="band_1000_2000">1000–2000 m</option>
                 <option value="band_2000_3000">2000–3000 m</option>
                 <option value="above_3000">> 3000 m</option>
               </select>
             </div>
             <div class="form-group">
-              <label for="temperature-select">Temperature band</label>
-              <select id="temperature-select">
-                <option value="hot">Hot</option>
-                <option value="temperate">Temperate</option>
-                <option value="cold">Cold</option>
-                <option value="very_cold">Very cold</option>
-              </select>
+                <label for="temperature-select">Temperature band</label>
+                <select id="temperature-select">
+                  <option value="hot">Hot</option>
+                  <option value="temperate">Temperate</option>
+                  <option value="cold">Cold</option>
+                  <option value="very_cold">Very cold</option>
+                </select>
+              </div>
+            </div>
+            <div class="env-grid">
+              <div class="form-group">
+                <label for="lat-input">Latitude</label>
+                <input id="lat-input" type="number" step="0.0001" placeholder="e.g., 39.55" />
+              </div>
+              <div class="form-group">
+                <label for="lon-input">Longitude</label>
+                <input id="lon-input" type="number" step="0.0001" placeholder="e.g., -105.78" />
+              </div>
+              <div class="form-group">
+                <label for="elevation-input">Elevation (m)</label>
+                <input id="elevation-input" type="number" step="1" placeholder="e.g., 2600" />
+              </div>
             </div>
           </div>
-        </div>
 
-        <button id="evaluate-btn" class="primary-btn" type="button">Evaluate node</button>
-      </section>
+          <button id="evaluate-btn" class="primary-btn" type="button">Evaluate node</button>
+        </section>
 
       <div class="stacked-column">
         <section class="card" id="results-panel">
@@ -332,7 +350,14 @@
               <p class="eyebrow">Library</p>
               <h3>Saved node designs</h3>
             </div>
-            <button id="export-designs" class="ghost-btn" type="button">Export Node Designs</button>
+            <div class="button-stack">
+              <button id="whitefrost-demo" class="ghost-btn" type="button">Load WHITEFROST Demo</button>
+              <label for="import-mission" class="ghost-btn file-btn" role="button" aria-label="Import MissionProject JSON">
+                Import MissionProject
+                <input id="import-mission" type="file" accept="application/json" />
+              </label>
+              <button id="export-designs" class="ghost-btn" type="button">Export MissionProject</button>
+            </div>
           </div>
 
           <div class="fieldset">
@@ -375,12 +400,15 @@
       function toggleVisibility(showApp) {
         const appRoot = document.getElementById("app-root");
         const accessGate = document.getElementById("access-gate");
+        const demoRequest = document.getElementById("demo-request");
         if (showApp) {
           appRoot.style.display = "block";
           accessGate.style.display = "none";
+          demoRequest.style.display = "none";
         } else {
           appRoot.style.display = "none";
           accessGate.style.display = "block";
+          demoRequest.style.display = "block";
         }
       }
 

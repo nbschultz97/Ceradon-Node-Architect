@@ -1,0 +1,9 @@
+{
+  "description": "WHITEFROST recon quad control/relay tuned for cold, high-altitude operations.",
+  "host": "rpi5_8gb",
+  "radio": "wifi_ax210",
+  "antenna": "patch_14dbi",
+  "battery": "talentcell_144wh",
+  "sensors": ["gps_usb", "imu_i2c"],
+  "environment": "rural_open"
+}

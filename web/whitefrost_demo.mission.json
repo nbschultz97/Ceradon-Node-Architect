@@ -1,0 +1,153 @@
+{
+  "schema": "mission_project_v1",
+  "origin_tool": "node",
+  "generated_at": "2024-06-01T00:00:00Z",
+  "mission": {
+    "name": "Project WHITEFROST Demo",
+    "ao": "High-altitude alpine valley",
+    "objective": "Demonstrate recon quad + ridge relays + sustainment drop",
+    "timeframe": "Demo",
+    "notes": "Public scenario: cold-weather, logistics-poor operating area"
+  },
+  "environment": {
+    "temperature_band": "very_cold",
+    "altitude_band": "band_2000_3000",
+    "propagation": "rural_open",
+    "terrain": "alpine ridges",
+    "weather": "light snow"
+  },
+  "constraints": [
+    {
+      "id": "runtime-cold",
+      "type": "min_runtime_hours",
+      "value": 4,
+      "notes": "Nodes must hold 4h at -10C, 2500 m"
+    }
+  ],
+  "platforms": [
+    {
+      "id": "platform-rpi5",
+      "name": "Raspberry Pi 5 8GB",
+      "role": "compute",
+      "origin_tool": "node",
+      "specs": {"cpu": "Broadcom Cortex-A76", "ram_gb": 8, "storage": "microSD", "power_idle_w": 4.5, "power_load_w": 11.0, "weight_kg": 0.046}
+    },
+    {
+      "id": "platform-rpi4",
+      "name": "Raspberry Pi 4 8GB",
+      "role": "compute",
+      "origin_tool": "node",
+      "specs": {"cpu": "Broadcom Cortex-A72", "ram_gb": 8, "storage": "microSD", "power_idle_w": 3.6, "power_load_w": 8.0, "weight_kg": 0.046}
+    }
+  ],
+  "nodes": [
+    {
+      "id": "node-whitefrost-recon",
+      "name": "WHITEFROST Recon Quad Control",
+      "origin_tool": "node",
+      "platform_id": "platform-rpi5",
+      "roles": ["controller", "relay"],
+      "rf_bands": ["wifi_2.4", "wifi_5"],
+      "power_profile": {
+        "estimated_draw_w": 18.2,
+        "ideal_runtime_h": 7.9,
+        "adjusted_runtime_h": 6.3,
+        "capacity_factor": 0.8
+      },
+      "battery": {"id": "talentcell_144wh", "capacity_wh": 144, "chemistry": "Li-ion"},
+      "location": {"lat": 39.55, "lon": -105.78, "elevation_m": 2600},
+      "environment": {"propagation": "rural_open", "altitude_band": "band_2000_3000", "temperature_band": "very_cold"},
+      "capabilities": ["WiFi recon / monitor mode scanning", "Potential WiFi CSI / channel analysis (driver support required)", "GPS time/position reference"],
+      "recommended_role": "Experimental WiFi CSI / channel analysis node",
+      "parts": {
+        "host_id": "rpi5_8gb",
+        "battery_id": "talentcell_144wh",
+        "rf_chains": [{"radio_id": "wifi_ax210", "antenna_id": "patch_14dbi"}],
+        "sensor_ids": ["gps_usb", "imu_i2c"]
+      },
+      "notes": "Cold-weather tuned recon/CSI control package"
+    },
+    {
+      "id": "node-whitefrost-mesh-1",
+      "name": "Ridge Mesh Relay Alpha",
+      "origin_tool": "node",
+      "platform_id": "platform-rpi4",
+      "roles": ["relay"],
+      "rf_bands": ["lora_0.9"],
+      "power_profile": {"estimated_draw_w": 8.5, "ideal_runtime_h": 10.5, "adjusted_runtime_h": 8.9, "capacity_factor": 0.85},
+      "battery": {"id": "field_200wh", "capacity_wh": 200, "chemistry": "Li-ion"},
+      "location": {"lat": 39.57, "lon": -105.80, "elevation_m": 2725},
+      "environment": {"propagation": "rural_open", "altitude_band": "band_2000_3000", "temperature_band": "very_cold"},
+      "capabilities": ["LoRa telemetry / low-rate sensor network"],
+      "recommended_role": "Endurance ISR node",
+      "parts": {
+        "host_id": "rpi4_8gb",
+        "battery_id": "field_200wh",
+        "rf_chains": [{"radio_id": "lora_sx1302", "antenna_id": "yagi_900_10dbi"}],
+        "sensor_ids": []
+      },
+      "notes": "Printed mast collar, taped battery wrap for sub-zero nights"
+    },
+    {
+      "id": "node-whitefrost-mesh-2",
+      "name": "Ridge Mesh Relay Bravo",
+      "origin_tool": "node",
+      "platform_id": "platform-rpi4",
+      "roles": ["relay"],
+      "rf_bands": ["lora_0.9"],
+      "power_profile": {"estimated_draw_w": 8.5, "ideal_runtime_h": 10.5, "adjusted_runtime_h": 8.9, "capacity_factor": 0.85},
+      "battery": {"id": "field_200wh", "capacity_wh": 200, "chemistry": "Li-ion"},
+      "location": {"lat": 39.58, "lon": -105.76, "elevation_m": 2680},
+      "environment": {"propagation": "rural_open", "altitude_band": "band_2000_3000", "temperature_band": "very_cold"},
+      "capabilities": ["LoRa telemetry / low-rate sensor network"],
+      "recommended_role": "Endurance ISR node",
+      "parts": {
+        "host_id": "rpi4_8gb",
+        "battery_id": "field_200wh",
+        "rf_chains": [{"radio_id": "lora_sx1302", "antenna_id": "yagi_900_10dbi"}],
+        "sensor_ids": []
+      },
+      "notes": "Line-of-sight back to control ridge; cold-soak tested"
+    },
+    {
+      "id": "node-whitefrost-sustain",
+      "name": "Partner Sustainment Drop",
+      "origin_tool": "node",
+      "platform_id": "platform-rpi4",
+      "roles": ["gateway", "relay"],
+      "rf_bands": ["wifi_2.4"],
+      "power_profile": {"estimated_draw_w": 9.5, "ideal_runtime_h": 18.0, "adjusted_runtime_h": 14.0, "capacity_factor": 0.78},
+      "battery": {"id": "talentcell_144wh", "capacity_wh": 144, "chemistry": "Li-ion"},
+      "location": {"lat": 39.59, "lon": -105.81, "elevation_m": 2450},
+      "environment": {"propagation": "rural_open", "altitude_band": "band_2000_3000", "temperature_band": "very_cold"},
+      "capabilities": ["WiFi client/backhaul", "Environmental sensing (temp/humidity)", "GPS time/position reference"],
+      "recommended_role": "Balanced multi-role field node",
+      "parts": {
+        "host_id": "rpi4_8gb",
+        "battery_id": "talentcell_144wh",
+        "rf_chains": [{"radio_id": "wifi_awus036acm", "antenna_id": "omni_5dbi"}],
+        "sensor_ids": ["env_bme280", "gps_usb"]
+      },
+      "notes": "Caches spare batteries and lightweight solar in partner hut"
+    }
+  ],
+  "mesh_links": [
+    {
+      "id": "mesh-whitefrost-alpha", "origin_tool": "node", "from_node": "node-whitefrost-recon", "to_node": "node-whitefrost-mesh-1", "band": "lora_0.9", "estimated_range_km": 2.0, "notes": "LOS uplink ridge"
+    },
+    {
+      "id": "mesh-whitefrost-bravo", "origin_tool": "node", "from_node": "node-whitefrost-mesh-1", "to_node": "node-whitefrost-mesh-2", "band": "lora_0.9", "estimated_range_km": 2.1, "notes": "Ridge-to-ridge relay"
+    },
+    {
+      "id": "mesh-whitefrost-sustain", "origin_tool": "node", "from_node": "node-whitefrost-mesh-2", "to_node": "node-whitefrost-sustain", "band": "wifi_2.4", "estimated_range_km": 0.3, "notes": "Short hop into sustainment hut"
+    }
+  ],
+  "kits": [
+    {
+      "id": "kit-whitefrost-sustainment",
+      "origin_tool": "kit",
+      "contents": ["talentcell_144wh", "field_200wh", "solar_fold_50w"],
+      "notes": "Cold-soaked batteries derate to ~80% at -10C"
+    }
+  ]
+}
