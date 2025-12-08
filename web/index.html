@@ -67,6 +67,84 @@
       color: #b91c1c;
       font-size: 0.95rem;
     }
+
+    .demo-request {
+      max-width: 900px;
+      margin: 24px auto 16px;
+      padding: 24px;
+      background: #f3f4f6;
+      border: 1px solid #e1e5eb;
+      border-radius: 12px;
+    }
+
+    .demo-request-inner {
+      max-width: 820px;
+      margin: 0 auto;
+    }
+
+    .demo-request h2 {
+      margin: 0 0 8px;
+      font-size: 1.4rem;
+    }
+
+    .demo-request p {
+      margin: 0 0 12px;
+      color: #374151;
+      line-height: 1.5;
+    }
+
+    .demo-request-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .demo-request-btn {
+      display: inline-block;
+      text-decoration: none;
+      text-align: center;
+      padding: 12px 18px;
+      border-radius: 10px;
+      font-weight: 700;
+      color: #0c1418;
+      background: #4db6ac;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.2s ease;
+    }
+
+    .demo-request-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(77, 182, 172, 0.25);
+    }
+
+    .demo-request-email {
+      margin: 0;
+      color: #4b5563;
+    }
+
+    .demo-request-email a {
+      color: #0f172a;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .demo-request-email a:hover {
+      text-decoration: underline;
+    }
+
+    @media (min-width: 640px) {
+      .demo-request-actions {
+        flex-direction: row;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .demo-request-email {
+        margin: 0;
+      }
+    }
   </style>
 </head>
 <body>
@@ -78,6 +156,33 @@
     <button id="demo-enter" type="button">Enter</button>
     <div id="demo-error" class="error-message" aria-live="polite">Invalid code.</div>
   </div>
+
+  <section id="demo-request" class="demo-request">
+    <div class="demo-request-inner">
+      <h2>Request a demo code</h2>
+      <p>
+        Ceradon Systems provides controlled access to <strong>Ceradon Mission Architect</strong> for qualified organizations.
+        Request a demo code to explore the live planner and see how it fits your mission profiles.
+      </p>
+      <div class="demo-request-actions">
+        <a
+          id="demo-request-button"
+          class="demo-request-btn"
+          href="mailto:contact@ceradonsystems.com?subject=Demo%20code%20request%20%E2%80%93%20Ceradon%20Mission%20Architect&body=Hi%20Ceradon%20team,%0D%0A%0D%0AI'd%20like%20to%20request%20a%20demo%20access%20code%20for%20Ceradon%20Mission%20Architect.%0D%0A%0D%0AOrganization:%20%0D%0AUse%20case:%20%0D%0ATimeline:%20%0D%0A%0D%0AThank%20you."
+        >
+          Request a demo code
+        </a>
+
+        <p class="demo-request-email">
+          Or email us at
+          <a href="mailto:contact@ceradonsystems.com?subject=Demo%20code%20request%20%E2%80%93%20Ceradon%20Mission%20Architect">
+            contact@ceradonsystems.com
+          </a>
+          with your organization and use case.
+        </p>
+      </div>
+    </div>
+  </section>
 
   <div id="app-root" style="display: none;">
     <header class="page-header">
