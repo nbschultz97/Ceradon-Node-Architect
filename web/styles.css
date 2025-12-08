@@ -107,7 +107,10 @@ label {
 
 select,
 button,
-input[type="checkbox"] {
+input[type="checkbox"],
+input[type="number"],
+input[type="text"],
+textarea {
   font: inherit;
 }
 
@@ -118,6 +121,21 @@ select {
   background: var(--card);
   color: var(--text);
   width: 100%;
+}
+
+input[type="text"],
+input[type="number"],
+textarea {
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  width: 100%;
+}
+
+textarea {
+  resize: vertical;
 }
 
 .primary-btn {
@@ -136,6 +154,17 @@ select {
 .primary-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 8px 20px rgba(77, 182, 172, 0.25);
+}
+
+.secondary-btn {
+  padding: 0.8rem 1rem;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
 }
 
 .ghost-btn {
@@ -252,6 +281,83 @@ select {
   font-weight: 800;
 }
 
+.env-grid,
+.constraints-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.role-checkboxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.5rem;
+}
+
+.role-checkboxes label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+}
+
+.stacked-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.designs-list {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 0.75rem;
+}
+
+.design-entry {
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem 0;
+}
+
+.design-entry:last-child {
+  border-bottom: none;
+}
+
+.design-entry h4 {
+  margin: 0 0 0.15rem 0;
+}
+
+.design-entry .tag {
+  display: inline-block;
+  background: rgba(77, 182, 172, 0.14);
+  color: var(--text);
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  margin-right: 0.3rem;
+  border: 1px solid rgba(77, 182, 172, 0.45);
+}
+
+.design-entry .meta {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+}
+
+.design-entry .delete-btn {
+  background: rgba(255, 107, 107, 0.12);
+  border: 1px solid rgba(255, 107, 107, 0.4);
+  color: var(--danger);
+  padding: 0.35rem 0.55rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
 .inline-note {
   font-size: 0.9rem;
   color: var(--muted);
@@ -260,7 +366,7 @@ select {
 @media (min-width: 720px) {
   .layout {
     display: grid;
-    grid-template-columns: 1.1fr 1fr;
+    grid-template-columns: 1.05fr 1fr;
     gap: 1.25rem;
     align-items: start;
   }
@@ -274,6 +380,11 @@ select {
   }
 
   .summary-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .env-grid,
+  .constraints-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }

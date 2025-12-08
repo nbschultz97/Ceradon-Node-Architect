@@ -54,6 +54,11 @@ The `sample_builds/` directory includes quick archetypes; list them with `python
 - **Capabilities**: WiFi recon/monitor, CSI potential, LoRa telemetry, analog FPV, SDR capture, cellular backhaul, plus sensor-driven tags (video, GPS, IMU, environmental).
 - **Recommended role**: heuristic rules prefer CSI/channel analysis builds, WiFi recon nodes with decent CPU/runtime, LoRa endurance beacons, FPV payload relays, SDR survey boxes, or cellular backhaul notes.
 
+### Environment, constraints, and exports
+- **Environment adjustments**: The web UI adds altitude and temperature bands that derate effective battery capacity (-5% to -30% across higher altitude and colder bands). Ideal runtime (no derate) and adjusted runtime (with derate) are shown side by side for transparency.
+- **Constraint-first filtering**: An optional constraints sidebar lets you screen designs by max weight, minimum adjusted runtime, and required roles. Active constraints hide non-compliant saved designs and surface warnings when evaluating a new node.
+- **JSON export**: Saved node designs can be exported to `ceradon_node_designs_v1` JSON with id, name, parts list (compute/battery/RF chains/sensors), total weight, ideal and adjusted runtime, radios, roles, environment bands, and notes so Mission Architect, Mesh Architect, or KitSmith can ingest the same objects.
+
 ## Project layout
 - `src/ceradon/` — models, data loader, estimator, CLI entrypoints.
 - `data/default_components.json` — component catalog; extend as needed.
