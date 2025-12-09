@@ -10,6 +10,7 @@ class Component:
     name: str
     category: str
     power_w: float = 0.0
+    tags: List[str] = field(default_factory=list)
     notes: str = ""
 
 
@@ -25,6 +26,7 @@ class Host(Component):
     power_w_idle: float = 0.0
     power_w_load: float = 0.0
     os_options: List[str] = field(default_factory=list)
+    max_rf_chains: int = 2
 
     def __post_init__(self):
         if self.power_w == 0.0 and self.power_w_idle and self.power_w_load:

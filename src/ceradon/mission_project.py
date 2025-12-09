@@ -10,6 +10,13 @@ from .models import Host, NodeBuild, Radio, Sensor
 
 SCHEMA_VERSION = "mission_project_v1"
 
+BATTERY_CAPACITY_FACTOR = {
+    "sea_level": {"hot": 1.0, "temperate": 1.0, "cold": 0.95, "very_cold": 0.9},
+    "band_1000_2000": {"hot": 0.95, "temperate": 0.93, "cold": 0.88, "very_cold": 0.82},
+    "band_2000_3000": {"hot": 0.9, "temperate": 0.88, "cold": 0.82, "very_cold": 0.76},
+    "above_3000": {"hot": 0.85, "temperate": 0.82, "cold": 0.75, "very_cold": 0.7},
+}
+
 
 def _derive_rf_bands(radio: Radio) -> List[str]:
     if radio.bands:
@@ -49,6 +56,8 @@ def _build_node(
     origin_tool: str = "node",
 ) -> Dict:
     rf_bands = _derive_rf_bands(build.radio)
+    cap_factor = BATTERY_CAPACITY_FACTOR.get(altitude_band, {}).get(temperature_band, 1.0)
+    adjusted_runtime_h = round(estimate.runtime_hours * cap_factor, 2)
     node_entry = {
         "id": node_id,
         "name": name,
@@ -59,13 +68,8 @@ def _build_node(
         "power_profile": {
             "estimated_draw_w": estimate.total_power_w,
             "ideal_runtime_h": estimate.runtime_hours,
-            "adjusted_runtime_h": estimate.runtime_hours,
-            "capacity_factor": 1.0,
-        },
-        "battery": {
-            "id": build.battery.id,
-            "capacity_wh": build.battery.capacity_wh,
-            "chemistry": build.battery.chemistry,
+            "adjusted_runtime_h": adjusted_runtime_h,
+            "capacity_factor": cap_factor,
         },
         "environment": {
             "propagation": build.environment,
@@ -74,6 +78,39 @@ def _build_node(
         },
         "capabilities": estimate.capabilities,
         "recommended_role": estimate.recommended_role,
+        "host_type": {"id": build.host.id, "name": build.host.name, "tags": build.host.tags},
+        "radios": [
+            {
+                "id": build.radio.id,
+                "name": build.radio.name,
+                "radio_type": build.radio.radio_type,
+                "bands": build.radio.bands,
+            }
+        ],
+        "antennas": [
+            {
+                "id": build.antenna.id,
+                "name": build.antenna.name,
+                "gain_dbi": build.antenna.gain_dbi,
+                "pattern": build.antenna.pattern,
+            }
+        ],
+        "battery": {
+            "id": build.battery.id,
+            "capacity_wh": build.battery.capacity_wh,
+            "chemistry": build.battery.chemistry,
+            "tags": build.battery.tags,
+        },
+        "sensors": [
+            {"id": sensor.id, "name": sensor.name, "type": sensor.sensor_type, "tags": sensor.tags}
+            for sensor in build.sensors
+        ],
+        "estimated_runtime_min": round(adjusted_runtime_h * 60, 1),
+        "environment_assumptions": {
+            "propagation": build.environment,
+            "altitude_band": altitude_band,
+            "temperature_band": temperature_band,
+        },
         "parts": {
             "host_id": build.host.id,
             "battery_id": build.battery.id,

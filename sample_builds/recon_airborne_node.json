@@ -1,0 +1,9 @@
+{
+  "description": "Airborne recon node for 3D printed UAS cores",
+  "host": "rpi5_8gb",
+  "radio": "wifi_mt7922",
+  "antenna": "omni_3dbi_stub",
+  "battery": "lipo_4s_5200mah",
+  "sensors": ["gps_usb", "imu_i2c", "camera_pi"],
+  "environment": "urban_outdoor"
+}

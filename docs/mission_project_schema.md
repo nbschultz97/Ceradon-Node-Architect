@@ -63,14 +63,24 @@ Represents a configured payload or control node that can be fielded.
     "capacity_wh": 144,
     "chemistry": "Li-ion"
   },
+  "estimated_runtime_min": 378,
   "location": { "lat": 39.55, "lon": -105.78, "elevation_m": 2600 },
   "environment": {
     "propagation": "rural_open",
     "altitude_band": "band_2000_3000",
     "temperature_band": "very_cold"
   },
+  "environment_assumptions": {
+    "propagation": "rural_open",
+    "altitude_band": "band_2000_3000",
+    "temperature_band": "very_cold"
+  },
   "capabilities": ["WiFi recon / monitor mode scanning", "Potential WiFi CSI / channel analysis (driver support required)", "GPS time/position reference"],
   "recommended_role": "Experimental WiFi CSI / channel analysis node",
+  "host_type": {"id": "rpi5_8gb", "name": "Raspberry Pi 5 8GB", "tags": ["whitefrost_default"]},
+  "radios": [{"id": "wifi_ax210", "name": "Intel AX210 M.2 WiFi 6E", "radio_type": "wifi", "bands": ["2.4 GHz", "5 GHz", "6 GHz"]}],
+  "antennas": [{"id": "patch_14dbi", "name": "Patch panel (14 dBi)", "gain_dbi": 14, "pattern": "patch"}],
+  "sensors": [{"id": "gps_usb", "name": "USB GPS puck", "type": "gps"}],
   "parts": {
     "host_id": "rpi5_8gb",
     "battery_id": "talentcell_144wh",

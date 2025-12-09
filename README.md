@@ -1,9 +1,9 @@
 # Ceradon Node Architect
 
-Offline-first CLI for modeling COTS RF/sensor nodes (Linux hosts, WiFi/LoRa/FPV/SDR/cellular radios, antennas, batteries, and sensors) you can buy from Amazon/RadioShack-tier suppliers. It estimates power draw, runtime, coarse RF range, likely capabilities, and a recommended role while staying lightweight enough for Raspberry Pi/Jetson deployments that anchor on WiFi CSI pose sensing.
+Offline-first CLI for modeling COTS RF/sensor nodes (Linux hosts, WiFi/LoRa/FPV/SDR/cellular radios, antennas, batteries, and sensors) you can buy from Amazon/RadioShack-tier suppliers. It estimates power draw, runtime, coarse RF range, likely capabilities, and a recommended role while staying lightweight enough for Raspberry Pi/Jetson deployments that anchor on WiFi CSI pose sensing. In the public WHITEFROST demo, Node Architect is the authoritative catalog and node designer that feeds Mission Architect, UxS Architect, and Mesh Architect with vetted COTS-heavy nodes that can be built on Pi/Jetson/handheld/mini-PC hosts.
 
 ## Features
-- Rich COTS catalog: Raspberry Pis, Jetson/NUC-class boxes, handheld PCs, WiFi/LoRa/FPV/SDR/cellular links, omni/patch/yagi/FPV antennas, USB-PD and TalentCell batteries, and simple sensors (camera/GPS/IMU/environmental).
+- Rich COTS catalog: Raspberry Pis, Jetson/Orin modules, rugged/handheld PCs, WiFi 6/6E/LoRa/FPV/SDR/cellular links, omni/patch/yagi/FPV antennas, USB-PD and LiPo bricks, and simple sensors (camera/GPS/IMU/environmental). Tagged parts highlight `whitefrost_default`, `3d_printed_uas_core`, `relay_node`, `edge_compute`, and `partner_friendly` options.
 - JSON-driven builds plus bundled presets for quick archetypes.
 - Estimator accounts for host idle/load, radio tx/rx, sensor draw, antenna gain buckets, and environment factors (lab/urban indoor/urban outdoor/rural open/subterranean).
 - Capability tags flag WiFi recon/CSI potential, LoRa telemetry, FPV video, SDR capture, cellular backhaul, and sensor payloads; roles steer toward recon, CSI experiments, FPV payloads, or low-power telemeter nodes.
@@ -59,6 +59,13 @@ The `sample_builds/` directory includes quick archetypes; list them with `python
 - **Constraint-first filtering**: An optional constraints sidebar lets you screen designs by max weight, minimum adjusted runtime, and required roles. Active constraints hide non-compliant saved designs and surface warnings when evaluating a new node.
 - **JSON export**: Saved node designs can be exported to `ceradon_node_designs_v1` JSON with id, name, parts list (compute/battery/RF chains/sensors), total weight, ideal and adjusted runtime, radios, roles, environment bands, and notes so Mission Architect, Mesh Architect, or KitSmith can ingest the same objects.
 
+### MissionProject nodes[] shape (what UxS Architect expects)
+`export-mission` (CLI) and the web "Export MissionProject" button emit `mission_project_v1` payloads. Each `nodes[]` entry exposes:
+- `id`, `name`, `roles`, `recommended_role` (stable per session so UxS/Mesh links can reference them)
+- `host_type` (id/name/tags), `radios[]`, `antennas[]`, `battery`, `sensors[]` with WHITEFROST-friendly tags such as `whitefrost_default`, `relay_node`, or `edge_compute`
+- `rf_bands`, `power_profile`, and `estimated_runtime_min` plus `environment_assumptions` (propagation, altitude band, temperature band) so endurance math matches between CLI and web
+- `parts` (host/battery/rf_chains/sensor_ids) retained for backward compatibility with other Architects
+
 ## Project layout
 - `src/ceradon/` — models, data loader, estimator, CLI entrypoints.
 - `data/default_components.json` — component catalog; extend as needed.
@@ -73,7 +80,7 @@ The `sample_builds/` directory includes quick archetypes; list them with `python
 
 ### Web UI updates
 - Mobile-friendly single-page layout with configuration up top and results below.
-- Preset configurations for common nodes that pre-fill compute, RF chains, sensors, and environment (still editable after selection).
+- Preset configurations for common nodes that pre-fill compute, RF chains, sensors, and environment (still editable after selection). WHITEFROST presets now include lab dev, recon airborne, and ground relay nodes alongside the existing demo/control builds.
 - Multi-radio/antenna RF chains with basic host slot counts (`max_rf_chains`) to warn when a build exceeds modeled capacity.
 
 ## Hardening and extensions

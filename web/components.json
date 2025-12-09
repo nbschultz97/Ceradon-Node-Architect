@@ -22,7 +22,8 @@
       "weight_kg": 0.046,
       "cpu_score": 5.0,
       "max_rf_chains": 2,
-      "notes": "Baseline low-power SBC"
+      "notes": "Baseline low-power SBC",
+      "tags": []
     },
     {
       "id": "rpi4_8gb",
@@ -44,7 +45,8 @@
       "weight_kg": 0.046,
       "cpu_score": 5.2,
       "max_rf_chains": 2,
-      "notes": "More RAM for buffering/SDR work"
+      "notes": "More RAM for buffering/SDR work",
+      "tags": []
     },
     {
       "id": "rpi5_8gb",
@@ -67,7 +69,11 @@
       "weight_kg": 0.05,
       "cpu_score": 6.5,
       "max_rf_chains": 3,
-      "notes": "Fast SBC for edge inference"
+      "notes": "Fast SBC for edge inference",
+      "tags": [
+        "whitefrost_default",
+        "partner_friendly"
+      ]
     },
     {
       "id": "jetson_nano",
@@ -89,7 +95,8 @@
       "weight_kg": 0.14,
       "cpu_score": 6.0,
       "max_rf_chains": 2,
-      "notes": "Edge AI capable"
+      "notes": "Edge AI capable",
+      "tags": []
     },
     {
       "id": "jetson_orin_nano",
@@ -110,7 +117,11 @@
       "weight_kg": 0.2,
       "cpu_score": 8.5,
       "max_rf_chains": 3,
-      "notes": "Better for CSI pose pipelines"
+      "notes": "Better for CSI pose pipelines",
+      "tags": [
+        "whitefrost_default",
+        "partner_friendly"
+      ]
     },
     {
       "id": "nuc_i7",
@@ -134,7 +145,8 @@
       "weight_kg": 0.8,
       "cpu_score": 9.0,
       "max_rf_chains": 4,
-      "notes": "Strong x86 host for SDR/CSI processing"
+      "notes": "Strong x86 host for SDR/CSI processing",
+      "tags": []
     },
     {
       "id": "intel_nuc_i5",
@@ -157,7 +169,8 @@
       "weight_kg": 0.75,
       "cpu_score": 8.0,
       "max_rf_chains": 4,
-      "notes": "Balanced compute for recon nodes"
+      "notes": "Balanced compute for recon nodes",
+      "tags": []
     },
     {
       "id": "linux_laptop",
@@ -180,7 +193,8 @@
       "weight_kg": 1.3,
       "cpu_score": 8.0,
       "max_rf_chains": 4,
-      "notes": "Portable field console"
+      "notes": "Portable field console",
+      "tags": []
     },
     {
       "id": "handheld_pc",
@@ -202,7 +216,63 @@
       "weight_kg": 0.7,
       "cpu_score": 7.5,
       "max_rf_chains": 2,
-      "notes": "Compact field keyboard + screen"
+      "notes": "Compact field keyboard + screen",
+      "tags": [
+        "whitefrost_default",
+        "partner_friendly"
+      ]
+    },
+    {
+      "id": "jetson_orin_nx_16gb",
+      "name": "NVIDIA Jetson Orin NX 16GB",
+      "power_w_idle": 8.5,
+      "power_w_load": 25.0,
+      "cpu": "6-core ARM v8.2 + 1024-core Ampere",
+      "ram_gb": 16,
+      "storage": "NVMe",
+      "os_options": [
+        "Ubuntu"
+      ],
+      "ports": [
+        "USB 3",
+        "CSI",
+        "M.2"
+      ],
+      "weight_kg": 0.23,
+      "cpu_score": 9.2,
+      "max_rf_chains": 3,
+      "notes": "Edge AI module for CSI pose and SDR-heavy workloads",
+      "tags": [
+        "edge_compute",
+        "whitefrost_default"
+      ]
+    },
+    {
+      "id": "rugged_mini_pc",
+      "name": "Rugged fanless mini PC (i5/16GB)",
+      "power_w_idle": 11.0,
+      "power_w_load": 30.0,
+      "cpu": "Intel i5-1235U",
+      "ram_gb": 16,
+      "storage": "NVMe 512GB",
+      "os_options": [
+        "Ubuntu",
+        "Kali",
+        "Windows"
+      ],
+      "ports": [
+        "USB-C",
+        "USB 3",
+        "2x LAN"
+      ],
+      "weight_kg": 1.1,
+      "cpu_score": 8.5,
+      "max_rf_chains": 3,
+      "notes": "Compact x86 relay/edge box with dual NICs",
+      "tags": [
+        "relay_node",
+        "edge_compute"
+      ]
     }
   ],
   "radios": [
@@ -224,7 +294,8 @@
       "supports_csi": true,
       "supports_monitor": true,
       "typ_tx_power_dbm": 20,
-      "notes": "Supports CSI on Linux with monitor mode"
+      "notes": "Supports CSI on Linux with monitor mode",
+      "tags": []
     },
     {
       "id": "wifi_awus036acm",
@@ -242,7 +313,8 @@
       "supports_csi": false,
       "supports_monitor": true,
       "typ_tx_power_dbm": 27,
-      "notes": "Battle-tested USB WiFi for Kali"
+      "notes": "Battle-tested USB WiFi for Kali",
+      "tags": []
     },
     {
       "id": "wifi_lp_dongle",
@@ -259,7 +331,8 @@
       "supports_csi": false,
       "supports_monitor": true,
       "typ_tx_power_dbm": 17,
-      "notes": "Tiny adapter for minimal draw"
+      "notes": "Tiny adapter for minimal draw",
+      "tags": []
     },
     {
       "id": "lora_sx1302",
@@ -277,7 +350,8 @@
       "supports_csi": false,
       "supports_monitor": false,
       "typ_tx_power_dbm": 24,
-      "notes": "Long-haul telemetry"
+      "notes": "Long-haul telemetry",
+      "tags": []
     },
     {
       "id": "lora_rfm95",
@@ -294,7 +368,8 @@
       "supports_csi": false,
       "supports_monitor": false,
       "typ_tx_power_dbm": 17,
-      "notes": "Sensor telemetry stick"
+      "notes": "Sensor telemetry stick",
+      "tags": []
     },
     {
       "id": "analog_5g8",
@@ -311,7 +386,8 @@
       "supports_csi": false,
       "supports_monitor": false,
       "typ_tx_power_dbm": 27,
-      "notes": "Simple FPV downlink"
+      "notes": "Simple FPV downlink",
+      "tags": []
     },
     {
       "id": "rtl_sdr",
@@ -328,7 +404,8 @@
       "supports_csi": false,
       "supports_monitor": false,
       "typ_tx_power_dbm": 0,
-      "notes": "Entry-level SDR front-end"
+      "notes": "Entry-level SDR front-end",
+      "tags": []
     },
     {
       "id": "cellular_hotspot",
@@ -346,7 +423,180 @@
       "supports_csi": false,
       "supports_monitor": false,
       "typ_tx_power_dbm": 20,
-      "notes": "Backhaul to infrastructure; pair with WiFi tether"
+      "notes": "Backhaul to infrastructure; pair with WiFi tether",
+      "tags": []
+    },
+    {
+      "id": "wifi_mt7922",
+      "name": "MediaTek MT7922 WiFi 6E M.2",
+      "power_w_tx": 3.8,
+      "power_w_rx": 2.8,
+      "bands": [
+        "2.4 GHz",
+        "5 GHz",
+        "6 GHz"
+      ],
+      "radio_type": "wifi",
+      "modulation": "802.11ax",
+      "max_power_dbm": 23,
+      "antenna_gain_db": 2,
+      "supports_csi": false,
+      "supports_monitor": true,
+      "typ_tx_power_dbm": 21,
+      "notes": "Low-cost WiFi 6E card for Pi 5 carrier/mini PCs",
+      "tags": [
+        "whitefrost_default",
+        "partner_friendly"
+      ]
+    },
+    {
+      "id": "wifi_awus036axm",
+      "name": "Alfa AWUS036AXM (USB WiFi 6)",
+      "power_w_tx": 5.0,
+      "power_w_rx": 3.5,
+      "bands": [
+        "2.4 GHz",
+        "5 GHz"
+      ],
+      "radio_type": "wifi",
+      "modulation": "802.11ax",
+      "max_power_dbm": 30,
+      "antenna_gain_db": 2,
+      "supports_csi": false,
+      "supports_monitor": true,
+      "typ_tx_power_dbm": 28,
+      "notes": "USB WiFi 6 adapter for field laptops/handheld PCs",
+      "tags": [
+        "partner_friendly"
+      ]
+    },
+    {
+      "id": "lora_sx1262",
+      "name": "LoRa SX1262 module",
+      "power_w_tx": 1.0,
+      "power_w_rx": 0.6,
+      "bands": [
+        "868 MHz",
+        "915 MHz"
+      ],
+      "radio_type": "lora",
+      "modulation": "LoRa",
+      "max_power_dbm": 22,
+      "antenna_gain_db": 0,
+      "supports_csi": false,
+      "supports_monitor": false,
+      "typ_tx_power_dbm": 20,
+      "notes": "Low-power LoRa node for airborne relays",
+      "tags": [
+        "relay_node",
+        "3d_printed_uas_core"
+      ]
+    },
+    {
+      "id": "fpv_vtx_2w",
+      "name": "5.8 GHz FPV VTX (2W)",
+      "power_w_tx": 6.5,
+      "power_w_rx": 0.0,
+      "bands": [
+        "5.8 GHz"
+      ],
+      "radio_type": "analog_fpv",
+      "modulation": "FM video",
+      "max_power_dbm": 33,
+      "antenna_gain_db": 1,
+      "supports_csi": false,
+      "supports_monitor": false,
+      "typ_tx_power_dbm": 30,
+      "notes": "High-power analog VTx for airborne video relays",
+      "tags": [
+        "relay_node"
+      ]
+    },
+    {
+      "id": "sdr_hackrf_one",
+      "name": "HackRF One SDR",
+      "power_w_tx": 3.5,
+      "power_w_rx": 2.5,
+      "bands": [
+        "1 MHz",
+        "6 GHz"
+      ],
+      "radio_type": "sdr",
+      "modulation": "wideband",
+      "max_power_dbm": 15,
+      "antenna_gain_db": 0,
+      "supports_csi": false,
+      "supports_monitor": false,
+      "typ_tx_power_dbm": 10,
+      "notes": "Wideband SDR for lab and field survey",
+      "tags": [
+        "lab_dev",
+        "edge_compute"
+      ]
+    },
+    {
+      "id": "sdr_airspy_mini",
+      "name": "Airspy Mini SDR",
+      "power_w_tx": 0.0,
+      "power_w_rx": 1.0,
+      "bands": [
+        "24 MHz",
+        "1.8 GHz"
+      ],
+      "radio_type": "sdr",
+      "modulation": "wideband",
+      "max_power_dbm": 0,
+      "antenna_gain_db": 0,
+      "supports_csi": false,
+      "supports_monitor": false,
+      "typ_tx_power_dbm": 0,
+      "notes": "Compact SDR dongle for spectrum checks",
+      "tags": [
+        "lab_dev",
+        "partner_friendly"
+      ]
+    },
+    {
+      "id": "lte_cat12_modem",
+      "name": "LTE CAT12 modem (USB)",
+      "power_w_tx": 5.0,
+      "power_w_rx": 3.0,
+      "bands": [
+        "700-2600 MHz"
+      ],
+      "radio_type": "cellular",
+      "modulation": "LTE CAT12",
+      "max_power_dbm": 24,
+      "antenna_gain_db": 1,
+      "supports_csi": false,
+      "supports_monitor": false,
+      "typ_tx_power_dbm": 23,
+      "notes": "Carrier-agnostic LTE uplink for rural relays",
+      "tags": [
+        "relay_node",
+        "partner_friendly"
+      ]
+    },
+    {
+      "id": "usb_5g_modem",
+      "name": "USB 5G modem",
+      "power_w_tx": 6.0,
+      "power_w_rx": 4.0,
+      "bands": [
+        "Sub-6 GHz"
+      ],
+      "radio_type": "cellular",
+      "modulation": "5G NR",
+      "max_power_dbm": 24,
+      "antenna_gain_db": 1,
+      "supports_csi": false,
+      "supports_monitor": false,
+      "typ_tx_power_dbm": 23,
+      "notes": "Higher throughput backhaul for edge compute nodes",
+      "tags": [
+        "edge_compute",
+        "partner_friendly"
+      ]
     }
   ],
   "antennas": [
@@ -361,7 +611,8 @@
         "5 GHz"
       ],
       "polarization": "vertical",
-      "notes": "Tidy footprint"
+      "notes": "Tidy footprint",
+      "tags": []
     },
     {
       "id": "omni_5dbi",
@@ -374,7 +625,8 @@
         "5 GHz"
       ],
       "polarization": "vertical",
-      "notes": "Baseline whip"
+      "notes": "Baseline whip",
+      "tags": []
     },
     {
       "id": "omni_9dbi",
@@ -387,7 +639,8 @@
         "5 GHz"
       ],
       "polarization": "vertical",
-      "notes": "Longer omni for outdoor recon"
+      "notes": "Longer omni for outdoor recon",
+      "tags": []
     },
     {
       "id": "panel_8dbi",
@@ -400,7 +653,8 @@
         "5 GHz"
       ],
       "polarization": "vertical",
-      "notes": "Directional panel"
+      "notes": "Directional panel",
+      "tags": []
     },
     {
       "id": "patch_14dbi",
@@ -413,7 +667,8 @@
         "5 GHz"
       ],
       "polarization": "linear",
-      "notes": "Tight beam for urban links"
+      "notes": "Tight beam for urban links",
+      "tags": []
     },
     {
       "id": "yagi_900_10dbi",
@@ -426,7 +681,8 @@
         "915 MHz"
       ],
       "polarization": "linear",
-      "notes": "LoRa directionality"
+      "notes": "LoRa directionality",
+      "tags": []
     },
     {
       "id": "fpv_cp",
@@ -438,7 +694,8 @@
         "5.8 GHz"
       ],
       "polarization": "circular",
-      "notes": "Matching CP video links"
+      "notes": "Matching CP video links",
+      "tags": []
     },
     {
       "id": "yagi_12dbi",
@@ -450,7 +707,77 @@
         "2.4 GHz"
       ],
       "polarization": "linear",
-      "notes": "Long-range directional"
+      "notes": "Long-range directional",
+      "tags": []
+    },
+    {
+      "id": "omni_3dbi_stub",
+      "name": "3 dBi stub omni",
+      "gain_dbi": 3.0,
+      "pattern": "omni",
+      "bands_supported": [
+        "2.4 GHz",
+        "5 GHz"
+      ],
+      "notes": "Tucked omni for handheld/airborne WiFi",
+      "tags": [
+        "whitefrost_default",
+        "3d_printed_uas_core"
+      ]
+    },
+    {
+      "id": "omni_lora_5dbi",
+      "name": "5 dBi LoRa omni",
+      "gain_dbi": 5.0,
+      "pattern": "omni",
+      "bands_supported": [
+        "868 MHz",
+        "915 MHz"
+      ],
+      "notes": "General-purpose LoRa whip",
+      "tags": [
+        "relay_node"
+      ]
+    },
+    {
+      "id": "patch_5g8_13dbi",
+      "name": "5.8 GHz patch panel (13 dBi)",
+      "gain_dbi": 13.0,
+      "pattern": "patch",
+      "bands_supported": [
+        "5.8 GHz"
+      ],
+      "notes": "Directional FPV patch for ground relays",
+      "tags": [
+        "relay_node"
+      ]
+    },
+    {
+      "id": "yagi_24ghz_12dbi",
+      "name": "2.4 GHz Yagi (12 dBi)",
+      "gain_dbi": 12.0,
+      "pattern": "yagi",
+      "bands_supported": [
+        "2.4 GHz"
+      ],
+      "notes": "Long-range directional WiFi link",
+      "tags": [
+        "relay_node"
+      ]
+    },
+    {
+      "id": "fpv_helical_10dbi",
+      "name": "5.8 GHz helical (10 dBi)",
+      "gain_dbi": 10.0,
+      "pattern": "directional",
+      "bands_supported": [
+        "5.8 GHz"
+      ],
+      "notes": "Directional FPV receive antenna",
+      "tags": [
+        "fpv",
+        "relay_node"
+      ]
     }
   ],
   "batteries": [
@@ -462,7 +789,8 @@
       "chemistry": "Li-ion",
       "output_voltage": 12,
       "mass_kg": 0.35,
-      "notes": "Minimal weight for sensor drops"
+      "notes": "Minimal weight for sensor drops",
+      "tags": []
     },
     {
       "id": "liion_98wh",
@@ -472,7 +800,8 @@
       "chemistry": "Li-ion",
       "output_voltage": 22.2,
       "mass_kg": 1.0,
-      "notes": "Airline-safe pack"
+      "notes": "Airline-safe pack",
+      "tags": []
     },
     {
       "id": "v_mount_98wh",
@@ -482,7 +811,8 @@
       "chemistry": "Li-ion",
       "output_voltage": 14.8,
       "mass_kg": 1.1,
-      "notes": "Camera battery ecosystem"
+      "notes": "Camera battery ecosystem",
+      "tags": []
     },
     {
       "id": "talentcell_144wh",
@@ -492,7 +822,8 @@
       "chemistry": "Li-ion",
       "output_voltage": 12,
       "mass_kg": 1.2,
-      "notes": "Common field pack"
+      "notes": "Common field pack",
+      "tags": []
     },
     {
       "id": "usb_pd_70wh",
@@ -502,7 +833,8 @@
       "chemistry": "Li-ion",
       "output_voltage": 12,
       "mass_kg": 0.5,
-      "notes": "PD capable for SBCs"
+      "notes": "PD capable for SBCs",
+      "tags": []
     },
     {
       "id": "field_200wh",
@@ -512,7 +844,58 @@
       "chemistry": "LiFePO4",
       "output_voltage": 12,
       "mass_kg": 2.5,
-      "notes": "Long endurance"
+      "notes": "Long endurance",
+      "tags": []
+    },
+    {
+      "id": "lipo_4s_5200mah",
+      "name": "LiPo 4S 5200mAh pack",
+      "capacity_wh": 77.0,
+      "chemistry": "LiPo",
+      "output_voltage": 14.8,
+      "mass_kg": 0.42,
+      "notes": "Common quad pack for airborne nodes",
+      "tags": [
+        "3d_printed_uas_core",
+        "whitefrost_default"
+      ]
+    },
+    {
+      "id": "lipo_4s_10000mah",
+      "name": "LiPo 4S 10000mAh pack",
+      "capacity_wh": 148.0,
+      "chemistry": "LiPo",
+      "output_voltage": 14.8,
+      "mass_kg": 0.82,
+      "notes": "Extended airborne endurance pack",
+      "tags": [
+        "relay_node"
+      ]
+    },
+    {
+      "id": "dc_barrel_99wh",
+      "name": "99Wh DC brick (12-16V)",
+      "capacity_wh": 99.0,
+      "chemistry": "Li-ion",
+      "output_voltage": 15.0,
+      "mass_kg": 0.55,
+      "notes": "Compact brick for lab dev benches",
+      "tags": [
+        "lab_dev",
+        "partner_friendly"
+      ]
+    },
+    {
+      "id": "powerbank_26800_pd",
+      "name": "26,800mAh USB-PD bank",
+      "capacity_wh": 99.0,
+      "chemistry": "Li-ion",
+      "output_voltage": 5.0,
+      "mass_kg": 0.48,
+      "notes": "USB-PD pack for handheld PCs and Pi 5",
+      "tags": [
+        "partner_friendly"
+      ]
     }
   ],
   "sensors": [
@@ -522,7 +905,8 @@
       "power_w": 2.0,
       "sensor_type": "camera",
       "interface": "USB",
-      "notes": "Baseline video"
+      "notes": "Baseline video",
+      "tags": []
     },
     {
       "id": "camera_pi",
@@ -530,7 +914,8 @@
       "power_w": 1.5,
       "sensor_type": "camera",
       "interface": "CSI",
-      "notes": "Lightweight board camera"
+      "notes": "Lightweight board camera",
+      "tags": []
     },
     {
       "id": "gps_usb",
@@ -538,7 +923,8 @@
       "power_w": 1.0,
       "sensor_type": "gps",
       "interface": "USB",
-      "notes": "Location/time"
+      "notes": "Location/time",
+      "tags": []
     },
     {
       "id": "imu_i2c",
@@ -546,7 +932,8 @@
       "power_w": 0.25,
       "sensor_type": "imu",
       "interface": "I2C",
-      "notes": "Motion/orientation"
+      "notes": "Motion/orientation",
+      "tags": []
     },
     {
       "id": "env_bme280",
@@ -554,7 +941,8 @@
       "power_w": 0.05,
       "sensor_type": "environmental",
       "interface": "I2C",
-      "notes": "Baseline atmosphere sensing"
+      "notes": "Baseline atmosphere sensing",
+      "tags": []
     },
     {
       "id": "none",
@@ -562,7 +950,8 @@
       "power_w": 0.0,
       "sensor_type": "none",
       "interface": "",
-      "notes": "RF-only node"
+      "notes": "RF-only node",
+      "tags": []
     }
   ]
 }
