@@ -12,6 +12,7 @@ const STORAGE_KEYS = {
 
 const nodeIdCache = {};
 let nodeSequence = 1;
+let autoEvaluateTimer = null;
 
 function slugify(text) {
   return (text || '')
@@ -55,6 +56,11 @@ const environmentRangeFactor = {
   rural_open: 1.0,
 };
 
+function triggerAutoEvaluate() {
+  clearTimeout(autoEvaluateTimer);
+  autoEvaluateTimer = setTimeout(() => handleEvaluate({ allowIncomplete: true }), 200);
+}
+
 function deriveRfBands(radio) {
   if (!radio) return [];
   if (radio.bands && radio.bands.length) {
@@ -72,6 +78,53 @@ function deriveRfBands(radio) {
 }
 
 const PRESETS = [
+  {
+    id: 'airborne_recon_node',
+    label: 'Airborne Recon Node',
+    description: 'Lightweight Pi 5 build with WiFi 6E and nav sensors for aerial ISR legs.',
+    config: {
+      computeId: 'rpi5_8gb',
+      environment: 'urban_outdoor',
+      altitudeBand: 'band_1000_2000',
+      temperatureBand: 'temperate',
+      batteryId: 'lipo_4s_5200mah',
+      rfChains: [
+        { radioId: 'wifi_mt7922', antennaIds: ['omni_3dbi_stub'] },
+      ],
+      sensorIds: ['gps_usb', 'imu_i2c', 'camera_pi'],
+    },
+  },
+  {
+    id: 'ground_relay_cots',
+    label: 'Ground Relay Node',
+    description: 'Tripod/vehicle relay with larger battery and dual-radio coverage.',
+    config: {
+      computeId: 'rugged_mini_pc',
+      environment: 'rural_open',
+      altitudeBand: 'band_2000_3000',
+      temperatureBand: 'temperate',
+      batteryId: 'field_200wh',
+      rfChains: [
+        { radioId: 'wifi_ax210', antennaIds: ['yagi_24ghz_12dbi'] },
+        { radioId: 'wifi_awus036acm', antennaIds: ['omni_9dbi'] },
+      ],
+      sensorIds: ['gps_usb'],
+    },
+  },
+  {
+    id: 'bench_dev_node',
+    label: 'Bench Dev Node',
+    description: 'Lab-friendly Jetson bring-up kit for SDR/CSI/payload testing.',
+    config: {
+      computeId: 'jetson_orin_nano',
+      environment: 'lab',
+      altitudeBand: 'sea_level',
+      temperatureBand: 'temperate',
+      batteryId: 'dc_barrel_99wh',
+      rfChains: [{ radioId: 'sdr_hackrf_one', antennaIds: ['omni_3dbi_stub'] }],
+      sensorIds: ['camera_usb', 'imu_i2c'],
+    },
+  },
   {
     id: 'whitefrost_demo',
     label: 'WHITEFROST Demo Control Node',
@@ -207,13 +260,17 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('evaluate-btn').addEventListener('click', handleEvaluate);
   document.getElementById('add-rf-chain-btn').addEventListener('click', () => addRfChain());
-  document.getElementById('compute-select').addEventListener('change', () => updateRfCapacity());
+  document.getElementById('compute-select').addEventListener('change', () => {
+    updateRfCapacity();
+    triggerAutoEvaluate();
+  });
   document.getElementById('preset-select').addEventListener('change', handlePresetChange);
   document.getElementById('export-designs').addEventListener('click', exportDesigns);
   document.getElementById('whitefrost-demo').addEventListener('click', loadWhitefrostDemo);
   document.getElementById('import-mission').addEventListener('change', handleMissionImport);
   bindConstraintInputs();
   bindEnvironmentPersistence();
+  bindAutoEvaluation();
 });
 
 async function loadComponents() {
@@ -305,6 +362,7 @@ function populateSensors(sensors) {
     checkbox.type = 'checkbox';
     checkbox.value = sensor.id;
     checkbox.name = 'sensor';
+    checkbox.addEventListener('change', triggerAutoEvaluate);
     label.appendChild(checkbox);
     label.appendChild(document.createTextNode(sensor.name));
     container.appendChild(label);
@@ -329,6 +387,7 @@ function createRoleCheckbox(role, name) {
   checkbox.type = 'checkbox';
   checkbox.value = role;
   checkbox.name = name;
+  checkbox.addEventListener('change', triggerAutoEvaluate);
   label.appendChild(checkbox);
   label.appendChild(document.createTextNode(formatRoleLabel(role)));
   return label;
@@ -367,6 +426,43 @@ function bindEnvironmentPersistence() {
       el.addEventListener('change', persistEnvironmentSelection);
     }
   });
+}
+
+function bindAutoEvaluation() {
+  const changeListeners = [
+    'compute-select',
+    'battery-select',
+    'environment-select',
+    'altitude-select',
+    'temperature-select',
+    'lat-input',
+    'lon-input',
+    'elevation-input',
+  ];
+
+  changeListeners.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', triggerAutoEvaluate);
+    }
+  });
+
+  const inputListeners = ['mission-name', 'node-name', 'node-notes'];
+  inputListeners.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', triggerAutoEvaluate);
+    }
+  });
+
+  const rfChainsContainer = document.getElementById('rf-chains-container');
+  if (rfChainsContainer) {
+    rfChainsContainer.addEventListener('change', (event) => {
+      if (event.target.tagName === 'SELECT') {
+        triggerAutoEvaluate();
+      }
+    });
+  }
 }
 
 function persistEnvironmentSelection() {
@@ -569,11 +665,19 @@ function addRfChain(prefill = {}) {
   radioSelect.id = '';
   radioSelect.style.display = '';
   radioSelect.value = prefill.radioId || '';
+  radioSelect.addEventListener('change', () => {
+    updateRfCapacity();
+    triggerAutoEvaluate();
+  });
 
   const antennaSelect = document.getElementById('antenna-template').cloneNode(true);
   antennaSelect.id = '';
   antennaSelect.style.display = '';
   antennaSelect.value = prefill.antennaId || '';
+  antennaSelect.addEventListener('change', () => {
+    updateRfCapacity();
+    triggerAutoEvaluate();
+  });
 
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
@@ -582,6 +686,7 @@ function addRfChain(prefill = {}) {
   removeBtn.addEventListener('click', () => {
     row.remove();
     updateRfCapacity();
+    triggerAutoEvaluate();
   });
 
   row.appendChild(radioSelect);
@@ -590,6 +695,7 @@ function addRfChain(prefill = {}) {
 
   container.appendChild(row);
   updateRfCapacity();
+  triggerAutoEvaluate();
 }
 
 function updateRfCapacity() {
@@ -620,10 +726,13 @@ function getSelectedCompute() {
   return getCatalog().compute.find((item) => item.id === computeId) || null;
 }
 
-function handleEvaluate() {
+function handleEvaluate(options = {}) {
+  const { allowIncomplete = false } = options;
   clearError();
   if (!components) {
-    showError('Component catalog not loaded yet.');
+    if (!allowIncomplete) {
+      showError('Component catalog not loaded yet.');
+    }
     return;
   }
 
@@ -654,7 +763,9 @@ function handleEvaluate() {
   persistEnvironmentSelection();
 
   if (!computeId || !batteryId) {
-    showError('Select compute and battery to evaluate.');
+    if (!allowIncomplete) {
+      showError('Select compute and battery to evaluate.');
+    }
     return;
   }
 
@@ -669,7 +780,9 @@ function handleEvaluate() {
 
   const { chains: rfChains, warnings: chainWarnings } = getRfChainsFromUI(catalog);
   if (rfChains.length === 0) {
-    showError('Add at least one RF chain with both a radio and an antenna.');
+    if (!allowIncomplete) {
+      showError('Add at least one RF chain with both a radio and an antenna.');
+    }
     return;
   }
 
@@ -797,6 +910,13 @@ function estimateRuntime(totalPowerW, battery) {
   return battery.capacity_wh / totalPowerW;
 }
 
+function formatRuntimeLabel(hours) {
+  if (!hours || hours <= 0) return 'N/A';
+  const minutes = Math.round(hours * 60);
+  if (hours < 1) return `${minutes} min`;
+  return `${hours.toFixed(1)} h (${minutes} min)`;
+}
+
 function componentWeightKg(component) {
   if (!component) return 0;
   if (typeof component.weight_kg === 'number') return component.weight_kg;
@@ -866,6 +986,20 @@ function estimateRange(radio, antenna, environment) {
   range = Math.max(20, Math.min(range, 5000));
 
   return { range_m: Math.round(range), description: `${radio.radio_type.toUpperCase()} link estimate` };
+}
+
+function describeRangeCategory(rangeInfo) {
+  if (!rangeInfo?.length) return { category: 'unknown', label: 'Range not modeled' };
+  const maxMeters = rangeInfo.reduce((max, info) => {
+    if (info.range?.range_m) return Math.max(max, info.range.range_m);
+    if (info.range?.range_km) return Math.max(max, info.range.range_km * 1000);
+    return max;
+  }, 0);
+
+  if (maxMeters >= 2000) return { category: 'long', label: 'Long range profile' };
+  if (maxMeters >= 400) return { category: 'medium', label: 'Medium range profile' };
+  if (maxMeters > 0) return { category: 'short', label: 'Short range profile' };
+  return { category: 'unknown', label: 'Range not modeled' };
 }
 
 function deriveCapabilities(rfChains, sensors) {
@@ -1034,7 +1168,7 @@ function renderDesignsList() {
     meta.className = 'meta';
     meta.innerHTML = `
       <span>Adjusted runtime: ${design.adjustedRuntimeHours.toFixed(1)} h</span>
-      <span>Total weight: ${design.totalWeightKg.toFixed(2)} kg</span>
+      <span>Approx. weight: ${design.totalWeightKg.toFixed(2)} kg</span>
       <span>Env: ${design.environment.replaceAll('_', ' ')} | Alt: ${describeAltitude(design.altitudeBand)} | Temp: ${describeTemperature(design.temperatureBand)}</span>
       ${design.location && design.location.lat !== undefined ? `<span>Loc: ${design.location.lat.toFixed(3)}, ${design.location.lon.toFixed(3)}${design.location.elevation_m ? ` (${design.location.elevation_m} m)` : ''}</span>` : ''}
       <span>Mission: ${design.missionName || missionName}</span>
@@ -1053,22 +1187,38 @@ function renderDesignsList() {
     }
 
     const actions = document.createElement('div');
-    actions.style.display = 'flex';
-    actions.style.justifyContent = 'space-between';
-    actions.style.alignItems = 'center';
-    actions.style.marginTop = '0.35rem';
+    actions.className = 'design-actions';
 
     const roleLabel = document.createElement('span');
     roleLabel.className = 'muted small';
     roleLabel.textContent = design.recommendedRole || '';
     actions.appendChild(roleLabel);
 
+    const buttons = document.createElement('div');
+    buttons.className = 'design-action-buttons';
+
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'ghost-btn';
+    editBtn.textContent = 'Edit';
+    editBtn.addEventListener('click', () => loadDesignIntoConfig(design));
+    buttons.appendChild(editBtn);
+
+    const duplicateBtn = document.createElement('button');
+    duplicateBtn.type = 'button';
+    duplicateBtn.className = 'ghost-btn';
+    duplicateBtn.textContent = 'Duplicate';
+    duplicateBtn.addEventListener('click', () => duplicateDesign(design));
+    buttons.appendChild(duplicateBtn);
+
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
     deleteBtn.className = 'delete-btn';
     deleteBtn.textContent = 'Delete';
     deleteBtn.addEventListener('click', () => deleteDesign(design.id));
-    actions.appendChild(deleteBtn);
+    buttons.appendChild(deleteBtn);
+
+    actions.appendChild(buttons);
 
     entry.appendChild(actions);
     container.appendChild(entry);
@@ -1077,6 +1227,58 @@ function renderDesignsList() {
 
 function deleteDesign(id) {
   savedDesigns = savedDesigns.filter((design) => design.id !== id);
+  persistDesigns();
+  renderDesignsList();
+}
+
+function loadDesignIntoConfig(design) {
+  if (!design?.parts || !components) return;
+  const catalog = getCatalog();
+
+  setSelectValue('compute-select', design.parts.compute.id, catalog.compute, 'compute');
+  setSelectValue('battery-select', design.parts.battery.id, catalog.batteries, 'battery');
+  setEnvironment(design.environment);
+  document.getElementById('altitude-select').value = design.altitudeBand || 'sea_level';
+  document.getElementById('temperature-select').value = design.temperatureBand || 'temperate';
+
+  if (design.location) {
+    document.getElementById('lat-input').value = design.location.lat ?? '';
+    document.getElementById('lon-input').value = design.location.lon ?? '';
+    document.getElementById('elevation-input').value = design.location.elevation_m ?? '';
+  }
+
+  const nameInput = document.getElementById('node-name');
+  if (nameInput) nameInput.value = design.name || '';
+  const notesInput = document.getElementById('node-notes');
+  if (notesInput) notesInput.value = design.notes || '';
+
+  if (design.missionName) {
+    missionName = design.missionName;
+    document.getElementById('mission-name').value = missionName;
+  }
+
+  const roleInputs = document.querySelectorAll('input[name="role"]');
+  roleInputs.forEach((input) => {
+    input.checked = design.roles?.includes(input.value) || false;
+  });
+
+  setSensors(design.parts.sensors?.map((sensor) => sensor.id) || []);
+
+  const container = document.getElementById('rf-chains-container');
+  container.innerHTML = '';
+  (design.parts.rfChains || []).forEach((chain) => {
+    addRfChain({ radioId: chain.radio.id, antennaId: chain.antenna.id });
+  });
+  updateRfCapacity();
+  handleEvaluate();
+}
+
+function duplicateDesign(design) {
+  if (!design) return;
+  const copy = JSON.parse(JSON.stringify(design));
+  copy.id = allocateNodeId(`${design.id || 'node'}-copy`);
+  copy.name = `${design.name || 'Node design'} (copy)`;
+  savedDesigns.push(copy);
   persistDesigns();
   renderDesignsList();
 }
@@ -1240,36 +1442,21 @@ function buildMissionProjectPayload() {
         gain_dbi: chain.antenna.gain_dbi,
         pattern: chain.antenna.pattern,
       }));
+      const estimatedRuntimeHours = Number(design.adjustedRuntimeHours.toFixed(2));
       const nodeEntry = {
         id: design.id,
         name: design.name,
         origin_tool: design.originTool || 'node',
         platform_id: platformId,
         roles: design.roles || [],
-        rf_bands: design.rfBands || [],
-        power_profile: {
-          estimated_draw_w: design.totalPowerW,
-          ideal_runtime_h: design.idealRuntimeHours,
-          adjusted_runtime_h: design.adjustedRuntimeHours,
-          capacity_factor: design.capacityFactor,
+        compute: {
+          id: design.parts.compute.id,
+          name: design.parts.compute.name,
+          cpu: design.parts.compute.cpu,
+          ram_gb: design.parts.compute.ram_gb,
+          storage: design.parts.compute.storage,
+          weight_kg: design.parts.compute.weight_kg,
         },
-        battery: {
-          id: design.parts.battery.id,
-          capacity_wh: design.parts.battery.capacity_wh,
-          chemistry: design.parts.battery.chemistry,
-          tags: design.parts.battery.tags || [],
-        },
-        environment: {
-          propagation: design.environment,
-          altitude_band: design.altitudeBand,
-          temperature_band: design.temperatureBand,
-        },
-        environment_assumptions: {
-          propagation: design.environment,
-          altitude_band: design.altitudeBand,
-          temperature_band: design.temperatureBand,
-        },
-        host_type: { id: design.parts.compute.id, name: design.parts.compute.name, tags: design.parts.compute.tags || [] },
         radios,
         antennas,
         sensors: (design.parts.sensors || []).map((sensor) => ({
@@ -1278,7 +1465,30 @@ function buildMissionProjectPayload() {
           type: sensor.sensor_type,
           tags: sensor.tags || [],
         })),
-        estimated_runtime_min: Number((design.adjustedRuntimeHours * 60).toFixed(1)),
+        power: {
+          battery: {
+            id: design.parts.battery.id,
+            capacity_wh: design.parts.battery.capacity_wh,
+            chemistry: design.parts.battery.chemistry,
+            tags: design.parts.battery.tags || [],
+          },
+          estimated_draw_w: design.totalPowerW,
+          ideal_runtime_h: design.idealRuntimeHours,
+          adjusted_runtime_h: design.adjustedRuntimeHours,
+          capacity_factor: design.capacityFactor,
+        },
+        environment: {
+          propagation: design.environment,
+          altitude_band: design.altitudeBand,
+          temperature_band: design.temperatureBand,
+        },
+        estimated_runtime: {
+          hours: estimatedRuntimeHours,
+          minutes: Number((estimatedRuntimeHours * 60).toFixed(1)),
+        },
+        estimated_runtime_min: Number((estimatedRuntimeHours * 60).toFixed(1)),
+        total_weight_kg: design.totalWeightKg,
+        rf_bands: design.rfBands || [],
         capabilities: design.capabilities,
         recommended_role: design.recommendedRole,
         parts: {
@@ -1360,13 +1570,19 @@ function importMissionProject(project) {
 
   (project.nodes || []).forEach((node, idx) => {
     const parts = node.parts || {};
-    const rfChains = parts.rf_chains || [];
+    let rfChains = parts.rf_chains || [];
+    if (!rfChains.length && node.radios?.length && node.antennas?.length) {
+      rfChains = node.radios.map((radioEntry, radioIdx) => ({
+        radio_id: radioEntry.id,
+        antenna_id: node.antennas[radioIdx]?.id,
+      }));
+    }
     const primaryChain = rfChains[0] || {};
-    const compute = catalog.compute.find((item) => item.id === parts.host_id);
-    const battery = catalog.batteries.find((item) => item.id === parts.battery_id);
+    const compute = catalog.compute.find((item) => item.id === parts.host_id || node.compute?.id);
+    const battery = catalog.batteries.find((item) => item.id === parts.battery_id || node.power?.battery?.id);
     const radio = catalog.radios.find((item) => item.id === primaryChain.radio_id);
     const antenna = catalog.antennas.find((item) => item.id === primaryChain.antenna_id);
-    const sensors = (parts.sensor_ids || [])
+    const sensors = (parts.sensor_ids || node.sensors?.map((sensor) => sensor.id) || [])
       .map((sid) => catalog.sensors.find((sensor) => sensor.id === sid))
       .filter(Boolean);
 
@@ -1375,10 +1591,14 @@ function importMissionProject(project) {
       return;
     }
 
-    const powerProfile = node.power_profile || {};
-    const environment = node.environment || {};
+    const powerProfile = node.power_profile || node.power || {};
+    const environment = node.environment || node.environment_assumptions || {};
     const rfBands = node.rf_bands || deriveRfBands(radio);
     const rangeHints = node.mesh_hints || [];
+    const estimatedRuntimeHours =
+      typeof node.estimated_runtime?.hours === 'number'
+        ? node.estimated_runtime.hours
+        : powerProfile.adjusted_runtime_h || powerProfile.ideal_runtime_h || 0;
 
     const stableId = node.id || allocateNodeId(node.name || parts.host_id || `imported-${idx}`);
     const design = {
@@ -1392,10 +1612,10 @@ function importMissionProject(project) {
       temperatureBand: environment.temperature_band || 'temperate',
       location: node.location,
       totalPowerW: Number(powerProfile.estimated_draw_w || 0),
-      idealRuntimeHours: Number(powerProfile.ideal_runtime_h || powerProfile.adjusted_runtime_h || 0),
-      adjustedRuntimeHours: Number(powerProfile.adjusted_runtime_h || powerProfile.ideal_runtime_h || 0),
+      idealRuntimeHours: Number(powerProfile.ideal_runtime_h || estimatedRuntimeHours || 0),
+      adjustedRuntimeHours: Number(powerProfile.adjusted_runtime_h || estimatedRuntimeHours || 0),
       capacityFactor: Number(powerProfile.capacity_factor || 1.0),
-      totalWeightKg: Number(compute.weight_kg || 0) + Number(battery.mass_kg || 0),
+      totalWeightKg: Number(compute.weight_kg || 0) + Number(battery.mass_kg || battery.weight_kg || 0),
       capabilities: node.capabilities || [],
       recommendedRole: node.recommended_role || '',
       rfBands,
@@ -1487,9 +1707,10 @@ function renderResults({
   const { compute, battery, sensors, rfChains, environment, altitudeBand, temperatureBand, location = {} } = nodeConfig;
 
   const sensorNames = sensors.length ? sensors.map((s) => s.name).join(', ') : 'None selected';
-  const idealRuntime = idealRuntimeHours > 0 ? `${idealRuntimeHours.toFixed(1)} h` : 'N/A';
-  const adjustedRuntime = adjustedRuntimeHours > 0 ? `${adjustedRuntimeHours.toFixed(1)} h` : 'N/A';
+  const idealRuntime = formatRuntimeLabel(idealRuntimeHours);
+  const adjustedRuntime = formatRuntimeLabel(adjustedRuntimeHours);
   const summaryRole = recommendedRole || 'N/A';
+  const rangeCategory = describeRangeCategory(rangeInfo);
 
   const rfList = rangeInfo
     .map((info, idx) => {
@@ -1543,6 +1764,14 @@ function renderResults({
       <p class="result-line"><span class="result-label">Ideal runtime:</span> ${idealRuntime}</p>
       <p class="result-line"><span class="result-label">Adjusted runtime:</span> ${adjustedRuntime}</p>
       ${nodeNotes ? `<p class="result-line"><span class="result-label">Notes:</span> ${nodeNotes}</p>` : ''}
+    </div>
+    <div class="result-section">
+      <h3>Evaluation metrics</h3>
+      <ul class="result-list">
+        <li><strong>Estimated runtime:</strong> ${adjustedRuntime}</li>
+        <li><strong>Approximate weight:</strong> ${totalWeightKg.toFixed(2)} kg</li>
+        <li><strong>RF chains:</strong> ${rfChains.length} configured (${rangeCategory.label})</li>
+      </ul>
     </div>
     <div class="result-section">
       <h3>RF Chains</h3>
