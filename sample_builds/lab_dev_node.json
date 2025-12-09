@@ -1,0 +1,9 @@
+{
+  "description": "Bench-top WHITEFROST lab dev node for CSI/SDR tinkering",
+  "host": "jetson_orin_nx_16gb",
+  "radio": "sdr_hackrf_one",
+  "antenna": "omni_3dbi_stub",
+  "battery": "dc_barrel_99wh",
+  "sensors": ["camera_usb", "gps_usb"],
+  "environment": "lab"
+}

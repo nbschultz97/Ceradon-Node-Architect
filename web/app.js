@@ -10,6 +10,26 @@ const STORAGE_KEYS = {
   constraints: 'ceradonConstraints',
 };
 
+const nodeIdCache = {};
+let nodeSequence = 1;
+
+function slugify(text) {
+  return (text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 40);
+}
+
+function allocateNodeId(nameHint) {
+  const slug = slugify(nameHint) || `node-${nodeSequence}`;
+  if (!nodeIdCache[slug]) {
+    nodeIdCache[slug] = slug.startsWith('node-') ? slug : `node-${slug}`;
+    nodeSequence += 1;
+  }
+  return nodeIdCache[slug];
+}
+
 const ROLE_OPTIONS = ['sensor', 'relay', 'ground_station', 'controller', 'gateway', 'c2_support'];
 
 let activeConstraints = { maxWeight: null, minRuntime: null, requiredRoles: [] };
@@ -66,6 +86,48 @@ const PRESETS = [
       batteryId: 'talentcell_144wh',
       rfChains: [{ radioId: 'wifi_ax210', antennaIds: ['patch_14dbi'] }],
       sensorIds: ['gps_usb', 'imu_i2c'],
+    },
+  },
+  {
+    id: 'lab_dev_node',
+    label: 'Lab dev node',
+    description: 'Bench-top WHITEFROST lab node for CSI/SDR bring-up.',
+    config: {
+      computeId: 'jetson_orin_nx_16gb',
+      environment: 'lab',
+      altitudeBand: 'sea_level',
+      temperatureBand: 'temperate',
+      batteryId: 'dc_barrel_99wh',
+      rfChains: [{ radioId: 'sdr_hackrf_one', antennaIds: ['omni_3dbi_stub'] }],
+      sensorIds: ['camera_usb', 'gps_usb'],
+    },
+  },
+  {
+    id: 'recon_airborne_node',
+    label: 'Recon airborne node',
+    description: 'Airframe-mounted Pi 5 + WiFi 6E for UAS recon.',
+    config: {
+      computeId: 'rpi5_8gb',
+      environment: 'urban_outdoor',
+      altitudeBand: 'band_1000_2000',
+      temperatureBand: 'cold',
+      batteryId: 'lipo_4s_5200mah',
+      rfChains: [{ radioId: 'wifi_mt7922', antennaIds: ['omni_3dbi_stub'] }],
+      sensorIds: ['gps_usb', 'imu_i2c', 'camera_pi'],
+    },
+  },
+  {
+    id: 'ground_relay_node',
+    label: 'Ground relay node',
+    description: 'Tripod/vehicle WiFi relay with directional panel.',
+    config: {
+      computeId: 'rugged_mini_pc',
+      environment: 'rural_open',
+      altitudeBand: 'band_2000_3000',
+      temperatureBand: 'temperate',
+      batteryId: 'lipo_4s_10000mah',
+      rfChains: [{ radioId: 'wifi_ax210', antennaIds: ['yagi_24ghz_12dbi'] }],
+      sensorIds: ['gps_usb'],
     },
   },
   {
@@ -648,7 +710,7 @@ function handleEvaluate() {
   warnings.push(...constraintNotes.warnings);
 
   lastEvaluation = {
-    id: `design-${Date.now()}`,
+    id: allocateNodeId(nodeName || computeId || 'node'),
     name: nodeName,
     notes: nodeNotes,
     roles: selectedRoles,
@@ -1033,7 +1095,7 @@ function handleSaveDesign() {
 
   const { nodeConfig } = lastEvaluation;
   const design = {
-    id: `design-${Date.now()}`,
+    id: allocateNodeId(name || nodeConfig.compute.id),
     name,
     notes,
     missionName,
@@ -1066,14 +1128,21 @@ function handleSaveDesign() {
         power_w_idle: nodeConfig.compute.power_w_idle,
         power_w_load: nodeConfig.compute.power_w_load,
         weight_kg: nodeConfig.compute.weight_kg,
+        tags: nodeConfig.compute.tags || [],
       },
       battery: {
         id: nodeConfig.battery.id,
         name: nodeConfig.battery.name,
         capacity_wh: nodeConfig.battery.capacity_wh,
         chemistry: nodeConfig.battery.chemistry,
+        tags: nodeConfig.battery.tags || [],
       },
-      sensors: (nodeConfig.sensors || []).map((s) => ({ id: s.id, name: s.name, sensor_type: s.sensor_type })),
+      sensors: (nodeConfig.sensors || []).map((s) => ({
+        id: s.id,
+        name: s.name,
+        sensor_type: s.sensor_type,
+        tags: s.tags || [],
+      })),
       rfChains: (nodeConfig.rfChains || []).map((chain) => ({
         radio: {
           id: chain.radio.id,
@@ -1081,8 +1150,14 @@ function handleSaveDesign() {
           radio_type: chain.radio.radio_type,
           band: chain.radio.band || chain.radio.bands?.join('/'),
           bands: chain.radio.bands,
+          tags: chain.radio.tags || [],
         },
-        antenna: { id: chain.antenna.id, name: chain.antenna.name, gain_dbi: chain.antenna.gain_dbi },
+        antenna: {
+          id: chain.antenna.id,
+          name: chain.antenna.name,
+          gain_dbi: chain.antenna.gain_dbi,
+          tags: chain.antenna.tags || [],
+        },
       })),
     },
   };
@@ -1153,42 +1228,70 @@ function buildMissionProjectPayload() {
       };
       }
 
+      const radios = design.parts.rfChains.map((chain) => ({
+        id: chain.radio.id,
+        name: chain.radio.name,
+        radio_type: chain.radio.radio_type,
+        bands: chain.radio.bands || (chain.radio.band ? chain.radio.band.split('/') : []),
+      }));
+      const antennas = design.parts.rfChains.map((chain) => ({
+        id: chain.antenna.id,
+        name: chain.antenna.name,
+        gain_dbi: chain.antenna.gain_dbi,
+        pattern: chain.antenna.pattern,
+      }));
       const nodeEntry = {
         id: design.id,
         name: design.name,
-      origin_tool: design.originTool || 'node',
-      platform_id: platformId,
-      roles: design.roles || [],
-      rf_bands: design.rfBands || [],
-      power_profile: {
-        estimated_draw_w: design.totalPowerW,
-        ideal_runtime_h: design.idealRuntimeHours,
-        adjusted_runtime_h: design.adjustedRuntimeHours,
-        capacity_factor: design.capacityFactor,
-      },
-      battery: {
-        id: design.parts.battery.id,
-        capacity_wh: design.parts.battery.capacity_wh,
-        chemistry: design.parts.battery.chemistry,
-      },
-      environment: {
-        propagation: design.environment,
-        altitude_band: design.altitudeBand,
-        temperature_band: design.temperatureBand,
-      },
-      capabilities: design.capabilities,
-      recommended_role: design.recommendedRole,
-      parts: {
-        host_id: design.parts.compute.id,
-        battery_id: design.parts.battery.id,
-        rf_chains: design.parts.rfChains.map((chain) => ({
-          radio_id: chain.radio.id,
-          antenna_id: chain.antenna.id,
+        origin_tool: design.originTool || 'node',
+        platform_id: platformId,
+        roles: design.roles || [],
+        rf_bands: design.rfBands || [],
+        power_profile: {
+          estimated_draw_w: design.totalPowerW,
+          ideal_runtime_h: design.idealRuntimeHours,
+          adjusted_runtime_h: design.adjustedRuntimeHours,
+          capacity_factor: design.capacityFactor,
+        },
+        battery: {
+          id: design.parts.battery.id,
+          capacity_wh: design.parts.battery.capacity_wh,
+          chemistry: design.parts.battery.chemistry,
+          tags: design.parts.battery.tags || [],
+        },
+        environment: {
+          propagation: design.environment,
+          altitude_band: design.altitudeBand,
+          temperature_band: design.temperatureBand,
+        },
+        environment_assumptions: {
+          propagation: design.environment,
+          altitude_band: design.altitudeBand,
+          temperature_band: design.temperatureBand,
+        },
+        host_type: { id: design.parts.compute.id, name: design.parts.compute.name, tags: design.parts.compute.tags || [] },
+        radios,
+        antennas,
+        sensors: (design.parts.sensors || []).map((sensor) => ({
+          id: sensor.id,
+          name: sensor.name,
+          type: sensor.sensor_type,
+          tags: sensor.tags || [],
         })),
-        sensor_ids: (design.parts.sensors || []).map((sensor) => sensor.id),
-      },
-      notes: design.notes,
-    };
+        estimated_runtime_min: Number((design.adjustedRuntimeHours * 60).toFixed(1)),
+        capabilities: design.capabilities,
+        recommended_role: design.recommendedRole,
+        parts: {
+          host_id: design.parts.compute.id,
+          battery_id: design.parts.battery.id,
+          rf_chains: design.parts.rfChains.map((chain) => ({
+            radio_id: chain.radio.id,
+            antenna_id: chain.antenna.id,
+          })),
+          sensor_ids: (design.parts.sensors || []).map((sensor) => sensor.id),
+        },
+        notes: design.notes,
+      };
 
       if (design.location && design.location.lat !== undefined && design.location.lon !== undefined) {
         nodeEntry.location = {
@@ -1277,8 +1380,9 @@ function importMissionProject(project) {
     const rfBands = node.rf_bands || deriveRfBands(radio);
     const rangeHints = node.mesh_hints || [];
 
+    const stableId = node.id || allocateNodeId(node.name || parts.host_id || `imported-${idx}`);
     const design = {
-      id: node.id || `imported-${idx}`,
+      id: stableId,
       name: node.name || `Imported node ${idx + 1}`,
       missionName: project.mission?.name || missionName,
       originTool: node.origin_tool || project.origin_tool || 'node',
@@ -1316,14 +1420,16 @@ function importMissionProject(project) {
           power_w_idle: compute.power_w_idle,
           power_w_load: compute.power_w_load,
           weight_kg: compute.weight_kg,
+          tags: compute.tags || [],
         },
         battery: {
           id: battery.id,
           name: battery.name,
           capacity_wh: battery.capacity_wh,
           chemistry: battery.chemistry,
+          tags: battery.tags || [],
         },
-        sensors: sensors.map((s) => ({ id: s.id, name: s.name, sensor_type: s.sensor_type })),
+        sensors: sensors.map((s) => ({ id: s.id, name: s.name, sensor_type: s.sensor_type, tags: s.tags || [] })),
         rfChains: rfChains.map((chain) => {
           const chainRadio = catalog.radios.find((item) => item.id === chain.radio_id) || radio;
           const chainAntenna = catalog.antennas.find((item) => item.id === chain.antenna_id) || antenna;
@@ -1334,8 +1440,9 @@ function importMissionProject(project) {
               radio_type: chainRadio.radio_type,
               band: chainRadio.band,
               bands: chainRadio.bands,
+              tags: chainRadio.tags || [],
             },
-            antenna: { id: chainAntenna.id, name: chainAntenna.name, gain_dbi: chainAntenna.gain_dbi },
+            antenna: { id: chainAntenna.id, name: chainAntenna.name, gain_dbi: chainAntenna.gain_dbi, tags: chainAntenna.tags || [] },
           };
         }),
       },

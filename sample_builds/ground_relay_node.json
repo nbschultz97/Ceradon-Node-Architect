@@ -1,0 +1,9 @@
+{
+  "description": "Tripod/vehicle WiFi relay with directional panel",
+  "host": "rugged_mini_pc",
+  "radio": "wifi_ax210",
+  "antenna": "yagi_24ghz_12dbi",
+  "battery": "lipo_4s_10000mah",
+  "sensors": ["gps_usb"],
+  "environment": "rural_open"
+}
