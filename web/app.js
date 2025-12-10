@@ -3,6 +3,7 @@ let lastPresetWarnings = [];
 let savedDesigns = [];
 let lastEvaluation = null;
 let missionName = 'Project WHITEFROST Demo';
+let importedProjectExtras = {};
 
 const STORAGE_KEYS = {
   designs: 'ceradonSavedDesigns',
@@ -10,9 +11,56 @@ const STORAGE_KEYS = {
   constraints: 'ceradonConstraints',
 };
 
+const SCHEMA_VERSION = 'mission_project_v1';
+
+/**
+ * @typedef {Object} RuntimeBreakdown
+ * @property {number} basePowerW
+ * @property {number} environmentPowerFactor
+ * @property {number} capacityFactor
+ * @property {number} baseRuntimeHours
+ * @property {number} environmentRuntimeHours
+ * @property {number} adjustedRuntimeHours
+ */
+
+/**
+ * @typedef {Object} NodeDesign
+ * @property {string} id
+ * @property {string} name
+ * @property {string} missionName
+ * @property {string} originTool
+ * @property {string[]} roles
+ * @property {string} environment
+ * @property {string} altitudeBand
+ * @property {string} temperatureBand
+ * @property {object} location
+ * @property {number} totalPowerW
+ * @property {number} idealRuntimeHours
+ * @property {number} adjustedRuntimeHours
+ * @property {number} capacityFactor
+ * @property {number} totalWeightKg
+ * @property {string[]} rfBands
+ * @property {string[]} capabilities
+ * @property {string} recommendedRole
+ * @property {object} parts
+ * @property {string} notes
+ * @property {RuntimeBreakdown} runtime
+ * @property {object} passthrough
+ */
+
 const nodeIdCache = {};
 let nodeSequence = 1;
 let autoEvaluateTimer = null;
+
+function extractUnknownFields(payload, knownKeys) {
+  if (!payload || typeof payload !== 'object') return {};
+  return Object.keys(payload).reduce((acc, key) => {
+    if (!knownKeys.includes(key)) {
+      acc[key] = payload[key];
+    }
+    return acc;
+  }, {});
+}
 
 function slugify(text) {
   return (text || '')
@@ -537,7 +585,23 @@ function loadSavedDesigns() {
   const stored = localStorage.getItem(STORAGE_KEYS.designs);
   if (stored) {
     try {
-      savedDesigns = JSON.parse(stored) || [];
+      savedDesigns = (JSON.parse(stored) || []).map((design) => {
+        const runtime = design.runtime || {
+          basePowerW: design.totalPowerW || 0,
+          environmentPowerFactor: 1,
+          capacityFactor: design.capacityFactor ?? 1,
+          baseRuntimeHours: design.idealRuntimeHours || design.adjustedRuntimeHours || 0,
+          environmentRuntimeHours:
+            design.environmentRuntimeHours || design.adjustedRuntimeHours || design.idealRuntimeHours || design.runtimeHours || 0,
+          adjustedRuntimeHours: design.adjustedRuntimeHours || 0,
+        };
+        return {
+          ...design,
+          runtime,
+          environmentRuntimeHours: design.environmentRuntimeHours ?? runtime.environmentRuntimeHours,
+          passthrough: design.passthrough || {},
+        };
+      });
     } catch (error) {
       console.warn('Failed to parse saved designs', error);
       savedDesigns = [];
@@ -797,14 +861,24 @@ function handleEvaluate(options = {}) {
     location,
   };
 
-  const totalPowerW = estimatePower(nodeConfig);
-  const idealRuntimeHours = estimateRuntime(totalPowerW, battery);
+  const powerProfile = estimatePowerProfile(nodeConfig);
+  const idealRuntimeHours = estimateRuntime(powerProfile.basePowerW, battery);
+  const environmentRuntimeHours = estimateRuntime(powerProfile.totalPowerW, battery);
   const capacityFactor = (batteryCapacityFactor[altitudeBand] || {})[temperatureBand] ?? 1.0;
-  const adjustedRuntimeHours = idealRuntimeHours * capacityFactor;
+  const adjustedRuntimeHours = environmentRuntimeHours * capacityFactor;
   const rangeInfo = rfChains.map((chain) => ({
     ...chain,
     range: estimateRange(chain.radio, chain.antenna, environment),
   }));
+
+  const runtimeBreakdown = {
+    basePowerW: powerProfile.basePowerW,
+    environmentPowerFactor: powerProfile.environmentPowerFactor,
+    capacityFactor,
+    baseRuntimeHours: idealRuntimeHours,
+    environmentRuntimeHours,
+    adjustedRuntimeHours,
+  };
 
   const capabilities = deriveCapabilities(rfChains, selectedSensors);
   const recommendedRole = recommendRole({ rfChains, compute, sensors: selectedSensors, runtimeHours: adjustedRuntimeHours });
@@ -830,7 +904,7 @@ function handleEvaluate(options = {}) {
     nodeConfig,
     missionName,
     location,
-    totalPowerW,
+    totalPowerW: powerProfile.totalPowerW,
     idealRuntimeHours,
     adjustedRuntimeHours,
     capacityFactor,
@@ -838,12 +912,14 @@ function handleEvaluate(options = {}) {
     capabilities,
     recommendedRole,
     totalWeightKg,
+    runtimeBreakdown,
   };
 
   renderResults({
     nodeConfig,
-    totalPowerW,
+    totalPowerW: powerProfile.totalPowerW,
     idealRuntimeHours,
+    environmentRuntimeHours,
     adjustedRuntimeHours,
     rangeInfo,
     capabilities,
@@ -851,6 +927,7 @@ function handleEvaluate(options = {}) {
     warnings,
     totalWeightKg,
     capacityFactor,
+    runtimeBreakdown,
     selectedRoles,
     nodeName,
     nodeNotes,
@@ -891,16 +968,20 @@ function getRfChainsFromUI(catalog) {
   return { chains, warnings };
 }
 
-function estimatePower(config) {
+function estimatePowerProfile(config) {
   const { compute, rfChains, sensors, environment } = config;
   const hostPower = ((compute.power_w_idle || 0) + (compute.power_w_load || 0)) / 2;
   const radioPower = rfChains.reduce((sum, chain) => sum + (((chain.radio.power_w_tx || 0) + (chain.radio.power_w_rx || 0)) / 2), 0);
   const sensorPower = sensors.reduce((sum, sensor) => sum + (sensor.power_w || 0), 0);
 
-  const basePower = hostPower + radioPower + sensorPower;
-  const factor = environmentPowerFactor[environment] ?? 1.0;
-  const totalPower = basePower * factor;
-  return Number.isFinite(totalPower) && totalPower > 0 ? totalPower : 0;
+  const basePowerW = hostPower + radioPower + sensorPower;
+  const environmentPowerFactorValue = environmentPowerFactor[environment] ?? 1.0;
+  const totalPowerW = basePowerW * environmentPowerFactorValue;
+  return {
+    basePowerW: Number.isFinite(basePowerW) && basePowerW > 0 ? basePowerW : 0,
+    environmentPowerFactor: environmentPowerFactorValue,
+    totalPowerW: Number.isFinite(totalPowerW) && totalPowerW > 0 ? totalPowerW : 0,
+  };
 }
 
 function estimateRuntime(totalPowerW, battery) {
@@ -1309,8 +1390,10 @@ function handleSaveDesign() {
     location: nodeConfig.location,
     totalPowerW: Number(lastEvaluation.totalPowerW.toFixed(2)),
     idealRuntimeHours: Number(lastEvaluation.idealRuntimeHours.toFixed(2)),
+    environmentRuntimeHours: Number(lastEvaluation.runtimeBreakdown.environmentRuntimeHours.toFixed(2)),
     adjustedRuntimeHours: Number(lastEvaluation.adjustedRuntimeHours.toFixed(2)),
     capacityFactor: Number(lastEvaluation.capacityFactor.toFixed(2)),
+    runtime: lastEvaluation.runtimeBreakdown,
     totalWeightKg: Number(lastEvaluation.totalWeightKg.toFixed(2)),
     capabilities: lastEvaluation.capabilities,
     recommendedRole: lastEvaluation.recommendedRole,
@@ -1320,6 +1403,7 @@ function handleSaveDesign() {
       range: info.range,
     })),
     rfBands: nodeConfig.rfChains.flatMap((chain) => deriveRfBands(chain.radio)),
+    passthrough: {},
     parts: {
       compute: {
         id: nodeConfig.compute.id,
@@ -1414,20 +1498,20 @@ function buildMissionProjectPayload() {
       const platformId = `platform-${design.parts.compute.id}`;
       const compute = design.parts.compute;
       if (!platforms[platformId]) {
-      platforms[platformId] = {
-        id: platformId,
-        name: compute.name,
-        role: 'compute',
-        origin_tool: design.originTool || 'node',
-        specs: {
-          cpu: compute.cpu,
-          ram_gb: compute.ram_gb,
-          storage: compute.storage,
-          power_idle_w: compute.power_w_idle,
-          power_load_w: compute.power_w_load,
-          weight_kg: compute.weight_kg,
-        },
-      };
+        platforms[platformId] = {
+          id: platformId,
+          name: compute.name,
+          role: 'compute',
+          origin_tool: design.originTool || 'node',
+          specs: {
+            cpu: compute.cpu,
+            ram_gb: compute.ram_gb,
+            storage: compute.storage,
+            power_idle_w: compute.power_w_idle,
+            power_load_w: compute.power_w_load,
+            weight_kg: compute.weight_kg,
+          },
+        };
       }
 
       const radios = design.parts.rfChains.map((chain) => ({
@@ -1442,8 +1526,32 @@ function buildMissionProjectPayload() {
         gain_dbi: chain.antenna.gain_dbi,
         pattern: chain.antenna.pattern,
       }));
-      const estimatedRuntimeHours = Number(design.adjustedRuntimeHours.toFixed(2));
+      const runtime =
+        design.runtime ||
+        {
+          basePowerW: design.totalPowerW,
+          environmentPowerFactor: 1,
+          capacityFactor: design.capacityFactor ?? 1,
+          baseRuntimeHours: design.idealRuntimeHours,
+          environmentRuntimeHours: design.environmentRuntimeHours || design.adjustedRuntimeHours,
+          adjustedRuntimeHours: design.adjustedRuntimeHours,
+        };
+      const estimatedRuntimeHours = Number((runtime.adjustedRuntimeHours ?? design.adjustedRuntimeHours).toFixed(2));
+      const baseRuntimeHours = Number((runtime.baseRuntimeHours ?? design.idealRuntimeHours).toFixed(2));
+      const environmentRuntimeHours = Number(
+        (runtime.environmentRuntimeHours ?? runtime.adjustedRuntimeHours ?? design.adjustedRuntimeHours).toFixed(2),
+      );
+      const powerProfile = {
+        estimated_draw_w: design.totalPowerW,
+        base_draw_w: runtime.basePowerW || design.totalPowerW,
+        environment_power_factor: runtime.environmentPowerFactor ?? 1,
+        ideal_runtime_h: baseRuntimeHours,
+        environment_runtime_h: environmentRuntimeHours,
+        adjusted_runtime_h: estimatedRuntimeHours,
+        capacity_factor: runtime.capacityFactor ?? design.capacityFactor ?? 1,
+      };
       const nodeEntry = {
+        ...design.passthrough,
         id: design.id,
         name: design.name,
         origin_tool: design.originTool || 'node',
@@ -1465,6 +1573,13 @@ function buildMissionProjectPayload() {
           type: sensor.sensor_type,
           tags: sensor.tags || [],
         })),
+        battery: {
+          id: design.parts.battery.id,
+          capacity_wh: design.parts.battery.capacity_wh,
+          chemistry: design.parts.battery.chemistry,
+          tags: design.parts.battery.tags || [],
+        },
+        power_profile: powerProfile,
         power: {
           battery: {
             id: design.parts.battery.id,
@@ -1473,18 +1588,29 @@ function buildMissionProjectPayload() {
             tags: design.parts.battery.tags || [],
           },
           estimated_draw_w: design.totalPowerW,
-          ideal_runtime_h: design.idealRuntimeHours,
-          adjusted_runtime_h: design.adjustedRuntimeHours,
-          capacity_factor: design.capacityFactor,
+          ideal_runtime_h: baseRuntimeHours,
+          adjusted_runtime_h: estimatedRuntimeHours,
+          capacity_factor: runtime.capacityFactor ?? design.capacityFactor ?? 1,
         },
         environment: {
           propagation: design.environment,
           altitude_band: design.altitudeBand,
           temperature_band: design.temperatureBand,
         },
+        environment_assumptions: {
+          propagation: design.environment,
+          altitude_band: design.altitudeBand,
+          temperature_band: design.temperatureBand,
+        },
+        environment_adjustments: {
+          propagation_draw_factor: runtime.environmentPowerFactor ?? 1,
+          battery_capacity_factor: runtime.capacityFactor ?? design.capacityFactor ?? 1,
+        },
         estimated_runtime: {
           hours: estimatedRuntimeHours,
           minutes: Number((estimatedRuntimeHours * 60).toFixed(1)),
+          base_hours: baseRuntimeHours,
+          environment_hours: environmentRuntimeHours,
         },
         estimated_runtime_min: Number((estimatedRuntimeHours * 60).toFixed(1)),
         total_weight_kg: design.totalWeightKg,
@@ -1515,17 +1641,21 @@ function buildMissionProjectPayload() {
     })
     .filter(Boolean);
 
+  const defaultEnvironment = nodes[0]?.environment || importedProjectExtras.environment || {};
+
   return {
-    schema: 'mission_project_v1',
+    schema: SCHEMA_VERSION,
+    schemaVersion: SCHEMA_VERSION,
     origin_tool: 'node',
     generated_at: new Date().toISOString(),
     mission: { name: missionName || 'Node Architect export', ao: 'Project WHITEFROST Demo' },
-    environment: nodes[0]?.environment || {},
+    environment: defaultEnvironment,
     constraints: buildConstraintsPayload(),
     platforms: Object.values(platforms),
     nodes,
     mesh_links: [],
     kits: [],
+    ...importedProjectExtras,
   };
 }
 
@@ -1567,8 +1697,39 @@ function importMissionProject(project) {
   const catalog = getCatalog();
   const designs = [];
   const warnings = [];
+  const knownProjectFields = ['schema', 'schemaVersion', 'origin_tool', 'generated_at', 'mission', 'environment', 'constraints', 'platforms', 'nodes', 'mesh_links', 'kits'];
+  const knownNodeFields = [
+    'id',
+    'name',
+    'origin_tool',
+    'platform_id',
+    'roles',
+    'rf_bands',
+    'power_profile',
+    'power',
+    'battery',
+    'estimated_runtime',
+    'estimated_runtime_min',
+    'location',
+    'environment',
+    'environment_assumptions',
+    'capabilities',
+    'recommended_role',
+    'host_type',
+    'radios',
+    'antennas',
+    'sensors',
+    'parts',
+    'notes',
+    'mesh_hints',
+    'weight_kg',
+    'total_weight_kg',
+  ];
+
+  importedProjectExtras = extractUnknownFields(project, knownProjectFields);
 
   (project.nodes || []).forEach((node, idx) => {
+    const nodePassthrough = extractUnknownFields(node, knownNodeFields);
     const parts = node.parts || {};
     let rfChains = parts.rf_chains || [];
     if (!rfChains.length && node.radios?.length && node.antennas?.length) {
@@ -1579,7 +1740,9 @@ function importMissionProject(project) {
     }
     const primaryChain = rfChains[0] || {};
     const compute = catalog.compute.find((item) => item.id === parts.host_id || node.compute?.id);
-    const battery = catalog.batteries.find((item) => item.id === parts.battery_id || node.power?.battery?.id);
+    const battery = catalog.batteries.find(
+      (item) => item.id === parts.battery_id || node.power?.battery?.id || node.battery?.id,
+    );
     const radio = catalog.radios.find((item) => item.id === primaryChain.radio_id);
     const antenna = catalog.antennas.find((item) => item.id === primaryChain.antenna_id);
     const sensors = (parts.sensor_ids || node.sensors?.map((sensor) => sensor.id) || [])
@@ -1600,6 +1763,28 @@ function importMissionProject(project) {
         ? node.estimated_runtime.hours
         : powerProfile.adjusted_runtime_h || powerProfile.ideal_runtime_h || 0;
 
+    const basePowerW = powerProfile.base_draw_w || powerProfile.estimated_draw_w || 0;
+    const environmentPowerFactorValue = powerProfile.environment_power_factor ?? powerProfile.environment_factor ?? 1;
+    const capacityFactor = powerProfile.capacity_factor ?? 1.0;
+    const baseRuntimeHours = typeof powerProfile.ideal_runtime_h === 'number' ? powerProfile.ideal_runtime_h : estimatedRuntimeHours;
+    const environmentRuntimeHours =
+      typeof powerProfile.environment_runtime_h === 'number'
+        ? powerProfile.environment_runtime_h
+        : typeof powerProfile.ideal_runtime_h === 'number'
+        ? powerProfile.ideal_runtime_h
+        : estimatedRuntimeHours;
+    const adjustedRuntimeHours =
+      typeof powerProfile.adjusted_runtime_h === 'number' ? powerProfile.adjusted_runtime_h : estimatedRuntimeHours;
+    const runtimeBreakdown = {
+      basePowerW: Number(basePowerW) || Number(powerProfile.estimated_draw_w) || 0,
+      environmentPowerFactor: Number(environmentPowerFactorValue) || 1,
+      capacityFactor: Number(capacityFactor) || 1,
+      baseRuntimeHours: Number(baseRuntimeHours) || Number(adjustedRuntimeHours) || 0,
+      environmentRuntimeHours: Number(environmentRuntimeHours) || Number(adjustedRuntimeHours) || 0,
+      adjustedRuntimeHours: Number(adjustedRuntimeHours) || 0,
+    };
+    const combinedPowerW = runtimeBreakdown.basePowerW * runtimeBreakdown.environmentPowerFactor || powerProfile.estimated_draw_w || 0;
+
     const stableId = node.id || allocateNodeId(node.name || parts.host_id || `imported-${idx}`);
     const design = {
       id: stableId,
@@ -1611,11 +1796,15 @@ function importMissionProject(project) {
       altitudeBand: environment.altitude_band || 'sea_level',
       temperatureBand: environment.temperature_band || 'temperate',
       location: node.location,
-      totalPowerW: Number(powerProfile.estimated_draw_w || 0),
-      idealRuntimeHours: Number(powerProfile.ideal_runtime_h || estimatedRuntimeHours || 0),
-      adjustedRuntimeHours: Number(powerProfile.adjusted_runtime_h || estimatedRuntimeHours || 0),
-      capacityFactor: Number(powerProfile.capacity_factor || 1.0),
-      totalWeightKg: Number(compute.weight_kg || 0) + Number(battery.mass_kg || battery.weight_kg || 0),
+      totalPowerW: Number(combinedPowerW),
+      idealRuntimeHours: Number(runtimeBreakdown.baseRuntimeHours),
+      environmentRuntimeHours: Number(runtimeBreakdown.environmentRuntimeHours),
+      adjustedRuntimeHours: Number(runtimeBreakdown.adjustedRuntimeHours),
+      capacityFactor: Number(runtimeBreakdown.capacityFactor || 1.0),
+      runtime: runtimeBreakdown,
+      totalWeightKg:
+        Number(node.total_weight_kg || node.weight_kg || 0) ||
+        Number(compute.weight_kg || 0) + Number(battery.mass_kg || battery.weight_kg || 0),
       capabilities: node.capabilities || [],
       recommendedRole: node.recommended_role || '',
       rfBands,
@@ -1666,6 +1855,7 @@ function importMissionProject(project) {
           };
         }),
       },
+      passthrough: nodePassthrough,
     };
 
     designs.push(design);
@@ -1692,6 +1882,7 @@ function renderResults({
   nodeConfig,
   totalPowerW,
   idealRuntimeHours,
+  environmentRuntimeHours,
   adjustedRuntimeHours,
   rangeInfo,
   capabilities,
@@ -1699,6 +1890,7 @@ function renderResults({
   warnings,
   totalWeightKg,
   capacityFactor,
+  runtimeBreakdown,
   selectedRoles,
   nodeName,
   nodeNotes,
@@ -1708,9 +1900,18 @@ function renderResults({
 
   const sensorNames = sensors.length ? sensors.map((s) => s.name).join(', ') : 'None selected';
   const idealRuntime = formatRuntimeLabel(idealRuntimeHours);
+  const envRuntime = formatRuntimeLabel(environmentRuntimeHours);
   const adjustedRuntime = formatRuntimeLabel(adjustedRuntimeHours);
   const summaryRole = recommendedRole || 'N/A';
   const rangeCategory = describeRangeCategory(rangeInfo);
+  const envPowerNote = runtimeBreakdown
+    ? `${(runtimeBreakdown.environmentPowerFactor * 100).toFixed(0)}% load factor for ${environment.split('_').join(' ')}`
+    : '';
+  const capacityNote = runtimeBreakdown
+    ? `${(runtimeBreakdown.capacityFactor * 100).toFixed(0)}% battery efficiency at ${describeAltitude(altitudeBand)} / ${describeTemperature(
+        temperatureBand,
+      )}`
+    : '';
 
   const rfList = rangeInfo
     .map((info, idx) => {
@@ -1737,13 +1938,15 @@ function renderResults({
     <h2>Results</h2>
     <div class="summary-bar">
       <div class="summary-block">
-        <div class="summary-label">Ideal runtime</div>
+        <div class="summary-label">Base runtime (nominal)</div>
         <div class="summary-value">${idealRuntime}</div>
+        <div class="muted small">No environment derates applied</div>
       </div>
       <div class="summary-block">
         <div class="summary-label">Adjusted runtime</div>
         <div class="summary-value">${adjustedRuntime}</div>
-        <div class="muted small">Capacity factor: ${(capacityFactor * 100).toFixed(0)}%</div>
+        <div class="muted small">${envPowerNote}</div>
+        <div class="muted small">${capacityNote}</div>
       </div>
       <div class="summary-block">
         <div class="summary-label">Weight</div>
@@ -1761,17 +1964,21 @@ function renderResults({
       <p class="result-line"><span class="result-label">Roles:</span> ${roleTags || 'No roles tagged'}</p>
       <p class="result-line"><span class="result-label">Sensors:</span> ${sensorNames}</p>
       <p class="result-line"><span class="result-label">Total power:</span> ${totalPowerW.toFixed(2)} W</p>
-      <p class="result-line"><span class="result-label">Ideal runtime:</span> ${idealRuntime}</p>
+      <p class="result-line"><span class="result-label">Base runtime:</span> ${idealRuntime}</p>
+      <p class="result-line"><span class="result-label">Environment runtime:</span> ${envRuntime}</p>
       <p class="result-line"><span class="result-label">Adjusted runtime:</span> ${adjustedRuntime}</p>
       ${nodeNotes ? `<p class="result-line"><span class="result-label">Notes:</span> ${nodeNotes}</p>` : ''}
     </div>
     <div class="result-section">
       <h3>Evaluation metrics</h3>
       <ul class="result-list">
-        <li><strong>Estimated runtime:</strong> ${adjustedRuntime}</li>
+        <li><strong>Base runtime:</strong> ${idealRuntime}</li>
+        <li><strong>Environment runtime:</strong> ${envRuntime}</li>
+        <li><strong>Adjusted runtime:</strong> ${adjustedRuntime}</li>
         <li><strong>Approximate weight:</strong> ${totalWeightKg.toFixed(2)} kg</li>
         <li><strong>RF chains:</strong> ${rfChains.length} configured (${rangeCategory.label})</li>
       </ul>
+      <p class="inline-note">Environment runtime applies propagation draw; adjusted runtime also derates battery for altitude and temperature.</p>
     </div>
     <div class="result-section">
       <h3>RF Chains</h3>

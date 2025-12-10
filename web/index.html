@@ -153,6 +153,7 @@
     <p>Ceradon Node Architect is part of the Ceradon Architect COTS planning suite. Access is demo-code gated.</p>
     <label for="demo-code">Access code</label>
     <input id="demo-code" type="password" name="access-code" autocomplete="off" inputmode="numeric" />
+    <p class="muted small">Use demo code <strong>NODE-GRID-429</strong> for the public demo.</p>
     <button id="demo-enter" type="button">Enter</button>
     <div id="demo-error" class="error-message" aria-live="polite">Invalid code.</div>
   </div>
@@ -161,21 +162,21 @@
     <div class="demo-request-inner">
       <h2>Request a demo code</h2>
       <p>
-        Ceradon Systems provides controlled access to <strong>Ceradon Mission Architect</strong> for qualified organizations.
-        Request a demo code to explore the live planner and see how it fits your mission profiles.
+        Ceradon Systems provides controlled access to <strong>Ceradon Node Architect</strong> for qualified organizations.
+        Request a demo code to explore the live node planner and see how it fits your mission profiles.
       </p>
       <div class="demo-request-actions">
         <a
           id="demo-request-button"
           class="demo-request-btn"
-          href="mailto:contact@ceradonsystems.com?subject=Demo%20code%20request%20%E2%80%93%20Ceradon%20Mission%20Architect&body=Hi%20Ceradon%20team,%0D%0A%0D%0AI'd%20like%20to%20request%20a%20demo%20access%20code%20for%20Ceradon%20Mission%20Architect.%0D%0A%0D%0AOrganization:%20%0D%0AUse%20case:%20%0D%0ATimeline:%20%0D%0A%0D%0AThank%20you."
+          href="mailto:contact@ceradonsystems.com?subject=Demo%20code%20request%20%E2%80%93%20Ceradon%20Node%20Architect&body=Hi%20Ceradon%20team,%0D%0A%0D%0AI'd%20like%20to%20request%20a%20demo%20access%20code%20for%20Ceradon%20Node%20Architect.%0D%0A%0D%0AOrganization:%20%0D%0AUse%20case:%20%0D%0ATimeline:%20%0D%0A%0D%0AThank%20you."
         >
           Request a demo code
         </a>
 
         <p class="demo-request-email">
           Or email us at
-          <a href="mailto:contact@ceradonsystems.com?subject=Demo%20code%20request%20%E2%80%93%20Ceradon%20Mission%20Architect">
+          <a href="mailto:contact@ceradonsystems.com?subject=Demo%20code%20request%20%E2%80%93%20Ceradon%20Node%20Architect">
             contact@ceradonsystems.com
           </a>
           with your organization and use case.
@@ -239,26 +240,20 @@
           </div>
         </div>
 
-        <div class="fieldset">
-          <div class="fieldset-header">
-            <div>
-              <p class="eyebrow">Compute</p>
+          <div class="fieldset">
+            <div class="fieldset-header">
+              <div>
+                <p class="eyebrow">Compute</p>
               <h3>Host platform</h3>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="compute-select">Compute host</label>
+              <select id="compute-select">
+                <option value="">Select compute</option>
+              </select>
             </div>
           </div>
-          <div class="form-group">
-            <label for="compute-select">Compute host</label>
-            <select id="compute-select">
-              <option value="">Select compute</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="battery-select">Battery</label>
-            <select id="battery-select">
-              <option value="">Select battery</option>
-            </select>
-          </div>
-        </div>
 
         <div class="fieldset">
           <div class="fieldset-header">
@@ -286,8 +281,24 @@
         <div class="fieldset">
           <div class="fieldset-header">
             <div>
+              <p class="eyebrow">Power</p>
+              <h3>Battery and endurance</h3>
+              <p class="muted small">Select the pack used for runtime math. Adjusted runtime reflects environment derates.</p>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="battery-select">Battery</label>
+            <select id="battery-select">
+              <option value="">Select battery</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="fieldset">
+          <div class="fieldset-header">
+            <div>
               <p class="eyebrow">Environment</p>
-              <h3>Operating conditions</h3>
+              <h3>Environment and constraints</h3>
             </div>
           </div>
           <div class="form-group">
