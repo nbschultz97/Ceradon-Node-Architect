@@ -9,7 +9,7 @@ from typing import List, Optional, Tuple
 from .data_loader import find_by_id, load_components
 from .estimator import estimate_node, format_report
 from .models import NodeBuild
-from .mission_project import assemble_project, parse_project, project_to_builds, to_cot_stub, to_geojson
+from .mission_project import LEGACY_SCHEMA_TAG, assemble_project, parse_project, project_to_builds, to_cot_stub, to_geojson
 
 PRESET_DIR = pathlib.Path(__file__).resolve().parents[2] / "sample_builds"
 
@@ -80,6 +80,7 @@ def export_mission_project(
     lat: Optional[float] = None,
     lon: Optional[float] = None,
     elevation_m: Optional[float] = None,
+    schema_version: str = None,
 ):
     build, estimate = _build_and_estimate(config_path, environment_override)
     node_id = f"node-{config_path.stem}"
@@ -108,6 +109,7 @@ def export_mission_project(
         ],
         mission={"name": mission_name or "Node Architect export", "ao": "Project WHITEFROST Demo"},
         environment={"propagation": build.environment, "altitude_band": altitude_band, "temperature_band": temperature_band},
+        schema_version=schema_version,
     )
     with output_path.open("w", encoding="utf-8") as handle:
         json.dump(project, handle, indent=2)
@@ -160,7 +162,7 @@ def resolve_preset(name: str) -> pathlib.Path:
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Ceradon Node Architect: estimate power, runtime, and roles for RF/sensor nodes",
+        description="Ceradon Node Architect: estimate power, runtime, and roles for RF/sensor nodes (MissionProject schema v2.0.0 exports by default)",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -179,7 +181,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Override environment assumption for range/power scaling",
     )
 
-    export_mp = sub.add_parser("export-mission", help="Export a MissionProject JSON from a build")
+    export_mp = sub.add_parser("export-mission", help="Export a MissionProject JSON from a build (schema v2.0.0)")
     export_mp.add_argument("output", type=pathlib.Path, help="Output path for mission project JSON")
     export_mp.add_argument("--config", type=pathlib.Path, help="Path to build JSON")
     export_mp.add_argument("--preset", choices=preset_choices, help="Preset name from sample_builds")
@@ -202,6 +204,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     export_mp.add_argument("--lat", type=float)
     export_mp.add_argument("--lon", type=float)
     export_mp.add_argument("--elevation-m", type=float)
+    export_mp.add_argument(
+        "--export-mission-v1",
+        action="store_true",
+        help="Deprecated: emit legacy mission_project_v1 schema instead of schemaVersion 2.0.0",
+    )
 
     import_mp = sub.add_parser("import-mission", help="Import a MissionProject JSON and list usable builds")
     import_mp.add_argument("mission_file", type=pathlib.Path)
@@ -240,6 +247,7 @@ def main(argv=None):
             config_path = resolve_preset(args.preset)
         if not config_path:
             parser.error("export-mission requires a config path or --preset")
+        schema_version = LEGACY_SCHEMA_TAG if args.export_mission_v1 else None
         export_mission_project(
             config_path=config_path,
             output_path=args.output,
@@ -250,6 +258,7 @@ def main(argv=None):
             lat=args.lat,
             lon=args.lon,
             elevation_m=args.elevation_m,
+            schema_version=schema_version,
         )
     elif args.command == "import-mission":
         import_mission_project(args.mission_file, simulate=args.simulate)

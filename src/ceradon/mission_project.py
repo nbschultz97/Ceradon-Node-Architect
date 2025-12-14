@@ -8,7 +8,8 @@ from typing import Dict, Iterable, List, Optional, Tuple
 from .data_loader import find_by_id
 from .models import Host, NodeBuild, Radio, Sensor
 
-SCHEMA_VERSION = "mission_project_v1"
+SCHEMA_VERSION = "2.0.0"
+LEGACY_SCHEMA_TAG = "mission_project_v1"
 
 BATTERY_CAPACITY_FACTOR = {
     "sea_level": {"hot": 1.0, "temperate": 1.0, "cold": 0.95, "very_cold": 0.9},
@@ -143,7 +144,9 @@ def assemble_project(
     constraints: Optional[List[Dict]] = None,
     kits: Optional[List[Dict]] = None,
     mesh_links: Optional[List[Dict]] = None,
+    schema_version: str = SCHEMA_VERSION,
 ) -> Dict:
+    schema_version = schema_version or SCHEMA_VERSION
     platforms: Dict[str, Dict] = {}
     nodes: List[Dict] = []
 
@@ -165,7 +168,7 @@ def assemble_project(
         )
 
     project = {
-        "schema": SCHEMA_VERSION,
+        "schemaVersion": SCHEMA_VERSION if schema_version == SCHEMA_VERSION else schema_version,
         "origin_tool": "node",
         "generated_at": None,
         "mission": mission or {},
@@ -176,12 +179,19 @@ def assemble_project(
         "mesh_links": mesh_links or [],
         "kits": kits or [],
     }
+
+    if schema_version != SCHEMA_VERSION:
+        project["schema"] = schema_version
+
     return project
 
 
 def parse_project(path: pathlib.Path) -> Dict:
     with path.open("r", encoding="utf-8") as handle:
-        return json.load(handle)
+        project = json.load(handle)
+    if project.get("schemaVersion") != SCHEMA_VERSION:
+        project = upgrade_project_schema(project)
+    return project
 
 
 def _match_component(items: List, identifier: str):
@@ -308,3 +318,35 @@ def merge_unknown_fields(original: Dict, updated: Dict) -> Dict:
     merged = copy.deepcopy(original)
     merged.update(updated)
     return merged
+
+
+def upgrade_project_schema(project: Dict) -> Dict:
+    legacy = copy.deepcopy(project)
+    upgraded = copy.deepcopy(project)
+
+    upgraded["schemaVersion"] = SCHEMA_VERSION
+    upgraded.setdefault("mission", legacy.get("mission", {}))
+    upgraded.setdefault("environment", legacy.get("environment", {}))
+    upgraded.setdefault("constraints", legacy.get("constraints", []))
+    upgraded.setdefault("platforms", legacy.get("platforms", []))
+    upgraded.setdefault("nodes", legacy.get("nodes", []))
+    upgraded.setdefault("mesh_links", legacy.get("mesh_links", []))
+    upgraded.setdefault("kits", legacy.get("kits", []))
+    upgraded.setdefault("origin_tool", legacy.get("origin_tool", "node"))
+
+    for node in upgraded.get("nodes", []):
+        node.setdefault("origin_tool", upgraded.get("origin_tool", "node"))
+        environment = node.get("environment") or node.get("environment_assumptions") or {}
+        node.setdefault("environment", environment)
+        node.setdefault("environment_assumptions", environment)
+        if "estimated_runtime_min" not in node and (node.get("power_profile") or {}).get("adjusted_runtime_h"):
+            node["estimated_runtime_min"] = round(
+                (node.get("power_profile") or {}).get("adjusted_runtime_h", 0) * 60, 1
+            )
+        if "host_type" not in node:
+            parts = node.get("parts") or {}
+            host_id = parts.get("host_id")
+            if host_id:
+                node["host_type"] = {"id": host_id, "name": parts.get("host_name", host_id), "tags": parts.get("host_tags", [])}
+
+    return merge_unknown_fields(project, upgraded)

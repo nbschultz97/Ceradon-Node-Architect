@@ -190,6 +190,10 @@
           <div class="container">
             <h1>Ceradon Node Architect</h1>
             <p class="lead">Assemble low-power RF and sensor nodes, explore presets, and estimate draw, runtime, and range entirely in the browser.</p>
+            <div class="page-meta">
+              <span class="badge" id="app-version-badge">Node Architect</span>
+              <span class="badge" id="schema-version-badge">MissionProject schema</span>
+            </div>
           </div>
         </header>
 
@@ -398,8 +402,18 @@
 
           <div id="designs-list" class="designs-list muted small">No saved designs yet.</div>
         </section>
+
+        <section class="card" id="change-log-card">
+          <h2>Change Log</h2>
+          <div id="change-log-entries" class="change-log"></div>
+        </section>
       </div>
     </main>
+    <footer class="page-footer">
+      <div class="container">
+        <p id="footer-version" class="small muted"></p>
+      </div>
+    </footer>
   </div>
 
   <script src="app.js"></script>

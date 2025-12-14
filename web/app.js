@@ -11,7 +11,20 @@ const STORAGE_KEYS = {
   constraints: 'ceradonConstraints',
 };
 
-const SCHEMA_VERSION = 'mission_project_v1';
+const APP_VERSION = 'Node Architect v0.4.0';
+const SCHEMA_VERSION = '2.0.0';
+const LEGACY_SCHEMA = 'mission_project_v1';
+const CHANGE_LOG = [
+  {
+    version: APP_VERSION,
+    date: '2024-06-01',
+    items: [
+      'MissionProject exports now use schemaVersion 2.0.0 by default with legacy v1 import support.',
+      'UI badge shows app + schema versions, plus footer changelog matching Mesh/KitSmith cues.',
+      'MissionProject import preserves unknown fields and surfaces them on re-export.',
+    ],
+  },
+];
 
 /**
  * @typedef {Object} RuntimeBreakdown
@@ -62,12 +75,57 @@ function extractUnknownFields(payload, knownKeys) {
   }, {});
 }
 
+function upgradeMissionProject(project) {
+  if (!project || project.schemaVersion === SCHEMA_VERSION) return project;
+  const upgraded = { ...project };
+  upgraded.schema = project.schema || LEGACY_SCHEMA;
+  upgraded.schemaVersion = SCHEMA_VERSION;
+  upgraded.origin_tool = project.origin_tool || 'node';
+  upgraded.mission = project.mission || {};
+  upgraded.environment = project.environment || {};
+  upgraded.constraints = project.constraints || [];
+  upgraded.platforms = project.platforms || [];
+  upgraded.mesh_links = project.mesh_links || [];
+  upgraded.kits = project.kits || [];
+  upgraded.nodes = (project.nodes || []).map((node) => {
+    const updated = { ...node };
+    updated.origin_tool = node.origin_tool || upgraded.origin_tool;
+    const environment = node.environment || node.environment_assumptions || {};
+    updated.environment = environment;
+    updated.environment_assumptions = environment;
+    if (!updated.estimated_runtime_min && updated.power_profile?.adjusted_runtime_h) {
+      updated.estimated_runtime_min = Number((updated.power_profile.adjusted_runtime_h * 60).toFixed(1));
+    }
+    if (!updated.host_type) {
+      const parts = updated.parts || {};
+      if (parts.host_id) {
+        updated.host_type = {
+          id: parts.host_id,
+          name: parts.host_name || parts.host_id,
+          tags: parts.host_tags || [],
+        };
+      }
+    }
+    return updated;
+  });
+  return upgraded;
+}
+
 function slugify(text) {
   return (text || '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '')
     .slice(0, 40);
+}
+
+function renderVersionBadges() {
+  const versionBadge = document.getElementById('app-version-badge');
+  const schemaBadge = document.getElementById('schema-version-badge');
+  const footerVersion = document.getElementById('footer-version');
+  if (versionBadge) versionBadge.textContent = APP_VERSION;
+  if (schemaBadge) schemaBadge.textContent = `MissionProject schema ${SCHEMA_VERSION}`;
+  if (footerVersion) footerVersion.textContent = `${APP_VERSION} • MissionProject schema ${SCHEMA_VERSION}`;
 }
 
 function allocateNodeId(nameHint) {
@@ -298,6 +356,8 @@ const PRESETS = [
 
 document.addEventListener('DOMContentLoaded', () => {
   loadComponents();
+  renderVersionBadges();
+  renderChangeLog();
   buildRoleCheckboxes();
   loadSavedDesigns();
   loadConstraints();
@@ -1557,6 +1617,11 @@ function buildMissionProjectPayload() {
         origin_tool: design.originTool || 'node',
         platform_id: platformId,
         roles: design.roles || [],
+        host_type: {
+          id: design.parts.compute.id,
+          name: design.parts.compute.name,
+          tags: design.parts.compute.tags || [],
+        },
         compute: {
           id: design.parts.compute.id,
           name: design.parts.compute.name,
@@ -1644,7 +1709,6 @@ function buildMissionProjectPayload() {
   const defaultEnvironment = nodes[0]?.environment || importedProjectExtras.environment || {};
 
   return {
-    schema: SCHEMA_VERSION,
     schemaVersion: SCHEMA_VERSION,
     origin_tool: 'node',
     generated_at: new Date().toISOString(),
@@ -1694,6 +1758,7 @@ function importMissionProject(project) {
     return;
   }
 
+  project = upgradeMissionProject(project);
   const catalog = getCatalog();
   const designs = [];
   const warnings = [];
@@ -1876,6 +1941,32 @@ function importMissionProject(project) {
   if (warnings.length) {
     showError(warnings.join(' '));
   }
+}
+
+function renderChangeLog() {
+  const container = document.getElementById('change-log-entries');
+  if (!container) return;
+  container.innerHTML = '';
+
+  CHANGE_LOG.forEach((entry) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'changelog-entry';
+
+    const header = document.createElement('div');
+    header.className = 'changelog-header';
+    header.innerHTML = `<strong>${entry.version}</strong><span class="muted small">${entry.date}</span>`;
+
+    const list = document.createElement('ul');
+    entry.items.forEach((item) => {
+      const li = document.createElement('li');
+      li.textContent = item;
+      list.appendChild(li);
+    });
+
+    wrapper.appendChild(header);
+    wrapper.appendChild(list);
+    container.appendChild(wrapper);
+  });
 }
 
 function renderResults({
