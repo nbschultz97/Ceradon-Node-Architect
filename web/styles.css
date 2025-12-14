@@ -39,6 +39,27 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
+.page-meta {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 0.6rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(77, 182, 172, 0.1);
+  color: var(--text);
+  border: 1px solid rgba(77, 182, 172, 0.4);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
 .lead {
   color: var(--muted);
   margin-top: 0.25rem;
@@ -256,6 +277,33 @@ textarea {
   background: rgba(255, 193, 7, 0.12);
   border: 1px solid rgba(255, 193, 7, 0.4);
   color: #f2d480;
+}
+
+.change-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.changelog-entry {
+  padding: 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.changelog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.page-footer {
+  border-top: 1px solid var(--border);
+  padding: 1rem 0;
+  margin-top: 1rem;
+  background: #0d1016;
 }
 
 .summary-bar {

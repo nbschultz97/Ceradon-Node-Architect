@@ -60,11 +60,44 @@ The `sample_builds/` directory includes quick archetypes; list them with `python
 - **JSON export**: Saved node designs can be exported to `ceradon_node_designs_v1` JSON with id, name, parts list (compute/battery/RF chains/sensors), total weight, ideal and adjusted runtime, radios, roles, environment bands, and notes so Mission Architect, Mesh Architect, or KitSmith can ingest the same objects.
 
 ### MissionProject nodes[] shape (what UxS Architect expects)
-`export-mission` (CLI) and the web "Export MissionProject" button emit `mission_project_v1` payloads. Each `nodes[]` entry exposes:
+`export-mission` (CLI) and the web "Export MissionProject" button now emit MissionProject schema v2.0.0 payloads by default. Each `nodes[]` entry exposes:
 - `id`, `name`, `roles`, `recommended_role` (stable per session so UxS/Mesh links can reference them)
 - `host_type` (id/name/tags), `radios[]`, `antennas[]`, `battery`, `sensors[]` with WHITEFROST-friendly tags such as `whitefrost_default`, `relay_node`, or `edge_compute`
 - `rf_bands`, `power_profile`, and `estimated_runtime_min` plus `environment_assumptions` (propagation, altitude band, temperature band) so endurance math matches between CLI and web
 - `parts` (host/battery/rf_chains/sensor_ids) retained for backward compatibility with other Architects
+
+Sample:
+
+```json
+{
+  "schemaVersion": "2.0.0",
+  "mission": {"name": "Project WHITEFROST Demo"},
+  "environment": {"propagation": "rural_open", "altitude_band": "band_2000_3000", "temperature_band": "cold"},
+  "nodes": [
+    {
+      "id": "node-alpha",
+      "name": "Quad recon",
+      "roles": ["sensor", "relay"],
+      "recommended_role": "Experimental WiFi CSI / channel analysis node",
+      "host_type": {"id": "rpi5_8gb", "name": "Raspberry Pi 5 8GB", "tags": ["whitefrost_default"]},
+      "radios": [{"id": "wifi_ax210", "name": "Intel AX210", "radio_type": "wifi", "bands": ["wifi_2.4", "wifi_5", "wifi_6e"]}],
+      "antennas": [{"id": "omni_5dbi", "name": "5 dBi omni", "gain_dbi": 5, "pattern": "omni"}],
+      "battery": {"id": "talentcell_144wh", "capacity_wh": 144, "chemistry": "Li-ion"},
+      "sensors": [{"id": "gps_usb", "name": "u-blox GPS", "type": "gps"}],
+      "rf_bands": ["wifi_2.4", "wifi_5"],
+      "power_profile": {"estimated_draw_w": 18.2, "adjusted_runtime_h": 6.3, "capacity_factor": 0.8},
+      "estimated_runtime_min": 378,
+      "environment_assumptions": {"propagation": "rural_open", "altitude_band": "band_2000_3000", "temperature_band": "cold"},
+      "parts": {"host_id": "rpi5_8gb", "battery_id": "talentcell_144wh", "rf_chains": [{"radio_id": "wifi_ax210", "antenna_id": "omni_5dbi"}], "sensor_ids": ["gps_usb"]},
+      "origin_tool": "node"
+    }
+  ],
+  "mesh_links": [],
+  "kits": []
+}
+```
+
+Imports preserve unknown fields in the payload and carry them through on re-export so downstream tools do not lose schema extensions. A deprecated `--export-mission-v1` flag remains available in the CLI when you need `mission_project_v1` compatibility.
 
 ## Project layout
 - `src/ceradon/` — models, data loader, estimator, CLI entrypoints.
