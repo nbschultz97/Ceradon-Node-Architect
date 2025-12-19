@@ -57,7 +57,7 @@ The `sample_builds/` directory includes quick archetypes; list them with `python
 ### Environment, constraints, and exports
 - **Environment adjustments**: The web UI adds altitude and temperature bands that derate effective battery capacity (-5% to -30% across higher altitude and colder bands). Ideal runtime (no derate) and adjusted runtime (with derate) are shown side by side for transparency.
 - **Constraint-first filtering**: An optional constraints sidebar lets you screen designs by max weight, minimum adjusted runtime, and required roles. Active constraints hide non-compliant saved designs and surface warnings when evaluating a new node.
-- **JSON export**: Saved node designs can be exported to `ceradon_node_designs_v1` JSON with id, name, parts list (compute/battery/RF chains/sensors), total weight, ideal and adjusted runtime, radios, roles, environment bands, and notes so Mission Architect, Mesh Architect, or KitSmith can ingest the same objects.
+- **JSON export**: Saved node designs can be exported to `ceradon_node_designs_v1` JSON with id, name, parts list (compute/battery/RF chains/sensors), total weight, ideal and adjusted runtime, radios, roles, environment bands, and notes so Mission Architect, Mesh Architect, or KitSmith can ingest the same objects. The CLI adds `export-bundle` to emit a MissionProject v2.0.0 skeleton (`schemaVersion`, `meta.origin_tool`, `nodes`, `platforms`) directly from one or more presets/configs without extra mission scaffolding.
 
 ### MissionProject nodes[] shape (what UxS Architect expects)
 `export-mission` (CLI) and the web "Export MissionProject" button now emit MissionProject schema v2.0.0 payloads by default. Each `nodes[]` entry exposes:
@@ -98,6 +98,8 @@ Sample:
 ```
 
 Imports preserve unknown fields in the payload and carry them through on re-export so downstream tools do not lose schema extensions. A deprecated `--export-mission-v1` flag remains available in the CLI when you need `mission_project_v1` compatibility.
+
+UI-only preview: a MissionProject preview card mirrors the CLI bundle output, showing the exact JSON and exposing copy/download buttons before exporting.
 
 ## Project layout
 - `src/ceradon/` — models, data loader, estimator, CLI entrypoints.

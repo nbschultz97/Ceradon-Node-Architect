@@ -403,6 +403,22 @@
           <div id="designs-list" class="designs-list muted small">No saved designs yet.</div>
         </section>
 
+        <section class="card" id="mission-preview-card">
+          <div class="fieldset-header">
+            <div>
+              <p class="eyebrow">MissionProject preview</p>
+              <h3>Schema-aligned export (v2.0.0)</h3>
+              <p class="muted small">Review the exact MissionProject JSON that will be exported; copy or download without leaving the page.</p>
+            </div>
+            <div class="button-stack">
+              <button id="copy-mission-preview" class="ghost-btn" type="button">Copy JSON</button>
+              <button id="download-mission-preview" class="ghost-btn" type="button">Download JSON</button>
+            </div>
+          </div>
+
+          <pre id="mission-preview" class="json-preview" aria-live="polite">Add node designs to generate a MissionProject bundle preview.</pre>
+        </section>
+
         <section class="card" id="change-log-card">
           <h2>Change Log</h2>
           <div id="change-log-entries" class="change-log"></div>
