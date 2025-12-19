@@ -153,7 +153,7 @@
     <p>Ceradon Node Architect is part of the Ceradon Architect COTS planning suite. Access is demo-code gated.</p>
     <label for="demo-code">Access code</label>
     <input id="demo-code" type="password" name="access-code" autocomplete="off" inputmode="numeric" />
-    <p class="muted small">Use demo code <strong>NODE-GRID-429</strong> for the public demo.</p>
+    <p class="muted small">Enter the access code provided by Ceradon Systems. <a href="mailto:info@ceradonsystems.com" class="muted">Request a demo code</a>.</p>
     <button id="demo-enter" type="button">Enter</button>
     <div id="demo-error" class="error-message" aria-live="polite">Invalid code.</div>
   </div>
@@ -354,6 +354,38 @@
         </section>
 
       <div class="stacked-column">
+        <section class="card" id="node-preview-panel">
+          <div class="fieldset-header">
+            <div>
+              <p class="eyebrow">Live visualization</p>
+              <h3>Node Preview</h3>
+              <p class="muted small">Quick snapshot of selected power, compute, RF, and payload parts with basic metrics.</p>
+            </div>
+          </div>
+          <div id="node-preview-grid" class="node-preview-grid" aria-live="polite">
+            <div class="node-preview-slot" data-slot="power">
+              <h4>Power</h4>
+              <div class="node-preview-body">Missing</div>
+            </div>
+            <div class="node-preview-slot" data-slot="compute">
+              <h4>Compute</h4>
+              <div class="node-preview-body">Missing</div>
+            </div>
+            <div class="node-preview-slot" data-slot="radio">
+              <h4>Radio</h4>
+              <div class="node-preview-body">Missing</div>
+            </div>
+            <div class="node-preview-slot" data-slot="sensor">
+              <h4>Sensor / Payload</h4>
+              <div class="node-preview-body">Missing</div>
+            </div>
+            <div class="node-preview-slot" data-slot="storage">
+              <h4>Storage / Other</h4>
+              <div class="node-preview-body">Missing</div>
+            </div>
+          </div>
+          <div id="node-preview-metrics" class="node-preview-metrics muted small">Select components to see preview metrics.</div>
+        </section>
         <section class="card" id="results-panel">
           <h2>Results</h2>
           <div class="muted small">Load components and evaluate a configuration to see estimates.</div>
@@ -435,9 +467,6 @@
   <script src="app.js"></script>
   <script>
     (function () {
-      const ACCESS_CODE = "NODE-GRID-429";
-      const STORAGE_KEY = "ceradonDemoAuthorized";
-
       function toggleVisibility(showApp) {
         const appRoot = document.getElementById("app-root");
         const accessGate = document.getElementById("access-gate");
@@ -458,7 +487,7 @@
         const button = document.getElementById("demo-enter");
         const error = document.getElementById("demo-error");
 
-        if (localStorage.getItem(STORAGE_KEY) === "true") {
+        if (localStorage.getItem(STORAGE_KEYS?.access || 'node_architect_access_granted') === "true") {
           toggleVisibility(true);
           return;
         }
@@ -467,8 +496,8 @@
 
         function validate() {
           const value = (input.value || "").trim();
-          if (value === ACCESS_CODE) {
-            localStorage.setItem(STORAGE_KEY, "true");
+          if (value === (window.DEMO_ACCESS_CODE || DEMO_ACCESS_CODE)) {
+            localStorage.setItem(STORAGE_KEYS?.access || 'node_architect_access_granted', "true");
             error.style.display = "none";
             toggleVisibility(true);
           } else {

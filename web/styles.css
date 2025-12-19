@@ -450,6 +450,39 @@ textarea {
   overflow: auto;
 }
 
+.node-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.node-preview-slot {
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.node-preview-slot.warning {
+  border-color: #b91c1c;
+  background: #fef2f2;
+}
+
+.node-preview-slot h4 {
+  margin: 0 0 6px;
+}
+
+.node-preview-body {
+  font-weight: 700;
+}
+
+.node-preview-metrics {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+
 #mission-preview-card .button-stack {
   align-self: flex-start;
 }

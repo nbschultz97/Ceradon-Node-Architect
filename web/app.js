@@ -9,19 +9,23 @@ const STORAGE_KEYS = {
   designs: 'ceradonSavedDesigns',
   environment: 'ceradonEnvBands',
   constraints: 'ceradonConstraints',
+  access: 'node_architect_access_granted',
 };
 
-const APP_VERSION = 'Node Architect v0.4.0';
+const DEMO_ACCESS_CODE = 'NODE-GRID-429';
+const APP_VERSION = 'Node Architect Web v1.3';
 const SCHEMA_VERSION = '2.0.0';
 const LEGACY_SCHEMA = 'mission_project_v1';
 const CHANGE_LOG = [
   {
     version: APP_VERSION,
-    date: '2024-06-01',
+    date: '2024-10-01',
     items: [
-      'MissionProject exports now use schemaVersion 2.0.0 by default with legacy v1 import support.',
-      'UI badge shows app + schema versions, plus footer changelog matching Mesh/KitSmith cues.',
-      'MissionProject import preserves unknown fields and surfaces them on re-export.',
+      'Hardened access gate (no public demo code shown) with persistent unlock.',
+      'Added live Node Preview block diagram with required-part highlighting.',
+      'Introduced required component validation before evaluation/export.',
+      'Web UI now aligned to shared catalog data alongside CLI.',
+      'New C-UAS/EW capability tags surfaced in node output.',
     ],
   },
 ];
@@ -851,6 +855,61 @@ function getCatalog() {
   };
 }
 
+function getMissingRequiredParts(selection) {
+  const missing = [];
+  if (!selection?.battery) missing.push('Power');
+  if (!selection?.compute) missing.push('Compute');
+  if (!selection?.rfChains?.length) missing.push('Radio');
+  if (!selection?.sensors?.length) missing.push('Sensor/Payload');
+  return missing;
+}
+
+function updateNodePreview(selection = {}, metrics = null) {
+  const grid = document.getElementById('node-preview-grid');
+  const metricsEl = document.getElementById('node-preview-metrics');
+  if (!grid || !metricsEl) return;
+
+  const slots = {
+    power: selection.battery?.name,
+    compute: selection.compute?.name,
+    radio: selection.rfChains?.length
+      ? selection.rfChains.map((chain) => chain.radio?.name).filter(Boolean).join(', ')
+      : null,
+    sensor: selection.sensors?.length ? selection.sensors.map((s) => s.name).join(', ') : null,
+    storage: selection.compute?.storage || selection.compute?.os,
+  };
+
+  const missing = getMissingRequiredParts(selection);
+
+  grid.querySelectorAll('.node-preview-slot').forEach((slotEl) => {
+    const slot = slotEl.getAttribute('data-slot');
+    const body = slotEl.querySelector('.node-preview-body');
+    const value = slots[slot];
+    if (!value) {
+      slotEl.classList.add('warning');
+      body.textContent = 'Missing';
+    } else {
+      slotEl.classList.remove('warning');
+      body.textContent = value;
+    }
+  });
+
+  if (missing.length) {
+    metricsEl.textContent = `Missing required components: ${missing.join(', ')}`;
+    return;
+  }
+
+  if (metrics?.totalPowerW && metrics?.adjustedRuntimeHours) {
+    const bands = selection.rfChains?.flatMap((chain) => deriveRfBands(chain.radio)) || [];
+    const tags = selection.rfChains?.flatMap((chain) => chain.radio?.tags || []) || [];
+    metricsEl.textContent = `Power: ${metrics.totalPowerW.toFixed(2)} W | Runtime: ${metrics.adjustedRuntimeHours.toFixed(1)} h | Bands: ${
+      bands.join(', ') || 'n/a'
+    } | Tags: ${(tags || []).join(', ') || 'n/a'}`;
+  } else {
+    metricsEl.textContent = 'Select components to see preview metrics.';
+  }
+}
+
 function getSelectedCompute() {
   if (!components) return null;
   const computeId = document.getElementById('compute-select').value;
@@ -893,27 +952,24 @@ function handleEvaluate(options = {}) {
 
   persistEnvironmentSelection();
 
-  if (!computeId || !batteryId) {
-    if (!allowIncomplete) {
-      showError('Select compute and battery to evaluate.');
-    }
-    return;
-  }
-
   const compute = catalog.compute.find((item) => item.id === computeId);
   const battery = catalog.batteries.find((item) => item.id === batteryId);
   const selectedSensors = catalog.sensors.filter((sensor) => sensorIds.includes(sensor.id));
+  const { chains: rfChains, warnings: chainWarnings } = getRfChainsFromUI(catalog);
 
-  if (!compute || !battery) {
-    showError('Invalid selection. Reload the page and try again.');
+  const selection = { compute, battery, sensors: selectedSensors, rfChains, environment, altitudeBand, temperatureBand };
+  updateNodePreview(selection, lastEvaluation);
+
+  const missingParts = getMissingRequiredParts(selection);
+  if (missingParts.length) {
+    if (!allowIncomplete) {
+      showError(`Missing required components: ${missingParts.join(', ')}`);
+    }
     return;
   }
 
-  const { chains: rfChains, warnings: chainWarnings } = getRfChainsFromUI(catalog);
-  if (rfChains.length === 0) {
-    if (!allowIncomplete) {
-      showError('Add at least one RF chain with both a radio and an antenna.');
-    }
+  if (!compute || !battery) {
+    showError('Invalid selection. Reload the page and try again.');
     return;
   }
 
@@ -981,6 +1037,8 @@ function handleEvaluate(options = {}) {
     totalWeightKg,
     runtimeBreakdown,
   };
+
+  updateNodePreview(nodeConfig, { totalPowerW: powerProfile.totalPowerW, adjustedRuntimeHours });
 
   renderResults({
     nodeConfig,
