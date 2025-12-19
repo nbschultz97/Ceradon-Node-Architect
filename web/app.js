@@ -76,11 +76,15 @@ function extractUnknownFields(payload, knownKeys) {
 }
 
 function upgradeMissionProject(project) {
-  if (!project || project.schemaVersion === SCHEMA_VERSION) return project;
+  if (!project) return project;
   const upgraded = { ...project };
-  upgraded.schema = project.schema || LEGACY_SCHEMA;
+  const originTool = project.meta?.origin_tool || project.origin_tool || 'node';
   upgraded.schemaVersion = SCHEMA_VERSION;
-  upgraded.origin_tool = project.origin_tool || 'node';
+  if (project.schemaVersion !== SCHEMA_VERSION) {
+    upgraded.schema = project.schema || upgraded.schema || LEGACY_SCHEMA;
+  }
+  upgraded.origin_tool = originTool;
+  upgraded.meta = { origin_tool: originTool, ...(project.meta || {}) };
   upgraded.mission = project.mission || {};
   upgraded.environment = project.environment || {};
   upgraded.constraints = project.constraints || [];
@@ -365,6 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('mission-name').value = missionName;
   document.getElementById('mission-name').addEventListener('input', (event) => {
     missionName = (event.target.value || '').trim() || 'Project WHITEFROST Demo';
+    renderMissionPreview();
   });
   document.getElementById('evaluate-btn').addEventListener('click', handleEvaluate);
   document.getElementById('add-rf-chain-btn').addEventListener('click', () => addRfChain());
@@ -374,6 +379,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('preset-select').addEventListener('change', handlePresetChange);
   document.getElementById('export-designs').addEventListener('click', exportDesigns);
+  document.getElementById('copy-mission-preview').addEventListener('click', copyMissionPreview);
+  document.getElementById('download-mission-preview').addEventListener('click', downloadMissionPreview);
   document.getElementById('whitefrost-demo').addEventListener('click', loadWhitefrostDemo);
   document.getElementById('import-mission').addEventListener('change', handleMissionImport);
   bindConstraintInputs();
@@ -1271,8 +1278,10 @@ function evaluateConstraints(metrics, includeWarnings = false) {
 
 function renderDesignsList() {
   const container = document.getElementById('designs-list');
+  if (!container) return;
   if (!savedDesigns.length) {
     container.textContent = 'No saved designs yet.';
+    renderMissionPreview();
     return;
   }
 
@@ -1364,6 +1373,8 @@ function renderDesignsList() {
     entry.appendChild(actions);
     container.appendChild(entry);
   });
+
+  renderMissionPreview();
 }
 
 function deleteDesign(id) {
@@ -1519,21 +1530,25 @@ function handleSaveDesign() {
   panel.appendChild(confirmation);
 }
 
-function exportDesigns() {
-  if (!savedDesigns.length) {
-    showError('Save at least one design before exporting.');
-    return;
-  }
-
-  const payload = buildMissionProjectPayload();
-
+function downloadMissionPayload(payload, filename = 'mission_project.json') {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
-  anchor.download = 'mission_project.json';
+  anchor.download = filename;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+function exportDesigns() {
+  if (!savedDesigns.length) {
+    showError('Save at least one design before exporting.');
+    renderMissionPreview();
+    return;
+  }
+
+  const payload = buildMissionProjectPayload();
+  downloadMissionPayload(payload);
 }
 
 function buildConstraintsPayload() {
@@ -1551,6 +1566,9 @@ function buildConstraintsPayload() {
 }
 
 function buildMissionProjectPayload() {
+  const meta = { origin_tool: importedProjectExtras.meta?.origin_tool || 'node', ...(importedProjectExtras.meta || {}) };
+  const extraFields = { ...importedProjectExtras };
+  delete extraFields.meta;
   const platforms = {};
   const nodes = savedDesigns
     .map((design) => {
@@ -1710,7 +1728,8 @@ function buildMissionProjectPayload() {
 
   return {
     schemaVersion: SCHEMA_VERSION,
-    origin_tool: 'node',
+    meta: { origin_tool: meta.origin_tool },
+    origin_tool: meta.origin_tool,
     generated_at: new Date().toISOString(),
     mission: { name: missionName || 'Node Architect export', ao: 'Project WHITEFROST Demo' },
     environment: defaultEnvironment,
@@ -1719,8 +1738,61 @@ function buildMissionProjectPayload() {
     nodes,
     mesh_links: [],
     kits: [],
-    ...importedProjectExtras,
+    ...extraFields,
   };
+}
+
+function renderMissionPreview() {
+  const previewEl = document.getElementById('mission-preview');
+  const copyBtn = document.getElementById('copy-mission-preview');
+  const downloadBtn = document.getElementById('download-mission-preview');
+  if (!previewEl || !copyBtn || !downloadBtn) return;
+
+  if (!savedDesigns.length) {
+    previewEl.textContent = 'Add node designs to generate a MissionProject bundle preview.';
+    copyBtn.disabled = true;
+    downloadBtn.disabled = true;
+    return;
+  }
+
+  try {
+    const payload = buildMissionProjectPayload();
+    previewEl.textContent = JSON.stringify(payload, null, 2);
+    copyBtn.disabled = false;
+    downloadBtn.disabled = false;
+  } catch (error) {
+    previewEl.textContent = `Unable to render MissionProject: ${error.message}`;
+    copyBtn.disabled = true;
+    downloadBtn.disabled = true;
+  }
+}
+
+async function copyMissionPreview() {
+  if (!savedDesigns.length) {
+    showError('Save at least one design before copying MissionProject JSON.');
+    renderMissionPreview();
+    return;
+  }
+
+  try {
+    const payload = buildMissionProjectPayload();
+    const json = JSON.stringify(payload, null, 2);
+    await navigator.clipboard.writeText(json);
+    clearError();
+  } catch (error) {
+    showError(`Copy failed: ${error.message}`);
+  }
+}
+
+function downloadMissionPreview() {
+  if (!savedDesigns.length) {
+    showError('Save at least one design before downloading MissionProject JSON.');
+    renderMissionPreview();
+    return;
+  }
+
+  const payload = buildMissionProjectPayload();
+  downloadMissionPayload(payload, 'mission_project_preview.json');
 }
 
 async function handleMissionImport(event) {
@@ -1762,7 +1834,20 @@ function importMissionProject(project) {
   const catalog = getCatalog();
   const designs = [];
   const warnings = [];
-  const knownProjectFields = ['schema', 'schemaVersion', 'origin_tool', 'generated_at', 'mission', 'environment', 'constraints', 'platforms', 'nodes', 'mesh_links', 'kits'];
+  const knownProjectFields = [
+    'schema',
+    'schemaVersion',
+    'origin_tool',
+    'meta',
+    'generated_at',
+    'mission',
+    'environment',
+    'constraints',
+    'platforms',
+    'nodes',
+    'mesh_links',
+    'kits',
+  ];
   const knownNodeFields = [
     'id',
     'name',
@@ -1791,7 +1876,10 @@ function importMissionProject(project) {
     'total_weight_kg',
   ];
 
-  importedProjectExtras = extractUnknownFields(project, knownProjectFields);
+  const projectExtras = extractUnknownFields(project, knownProjectFields);
+  const metaExtras = project.meta ? { ...project.meta } : {};
+  if (!metaExtras.origin_tool) metaExtras.origin_tool = project.origin_tool || 'node';
+  importedProjectExtras = { ...projectExtras, meta: metaExtras };
 
   (project.nodes || []).forEach((node, idx) => {
     const nodePassthrough = extractUnknownFields(node, knownNodeFields);

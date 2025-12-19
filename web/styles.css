@@ -436,6 +436,24 @@ textarea {
   color: var(--muted);
 }
 
+.json-preview {
+  background: #0f172a;
+  color: #d1d5db;
+  border-radius: 12px;
+  padding: 1rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  max-height: 420px;
+  overflow: auto;
+}
+
+#mission-preview-card .button-stack {
+  align-self: flex-start;
+}
+
 @media (min-width: 720px) {
   .layout {
     display: grid;

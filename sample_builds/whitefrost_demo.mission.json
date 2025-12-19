@@ -1,5 +1,6 @@
 {
-  "schema": "mission_project_v1",
+  "schemaVersion": "2.0.0",
+  "meta": {"origin_tool": "node", "preset": "WHITEFROST"},
   "origin_tool": "node",
   "generated_at": "2024-06-01T00:00:00Z",
   "mission": {
@@ -46,7 +47,7 @@
       "name": "WHITEFROST Recon Quad Control",
       "origin_tool": "node",
       "platform_id": "platform-rpi5",
-      "roles": ["controller", "relay"],
+      "roles": ["controller", "relay", "sensor"],
       "rf_bands": ["wifi_2.4", "wifi_5"],
       "power_profile": {
         "estimated_draw_w": 18.2,
@@ -54,17 +55,23 @@
         "adjusted_runtime_h": 6.3,
         "capacity_factor": 0.8
       },
-      "battery": {"id": "talentcell_144wh", "capacity_wh": 144, "chemistry": "Li-ion"},
+      "battery": {"id": "talentcell_144wh", "capacity_wh": 144, "chemistry": "Li-ion", "tags": ["whitefrost_default"]},
       "location": {"lat": 39.55, "lon": -105.78, "elevation_m": 2600},
       "environment": {"propagation": "rural_open", "altitude_band": "band_2000_3000", "temperature_band": "very_cold"},
+      "environment_assumptions": {"propagation": "rural_open", "altitude_band": "band_2000_3000", "temperature_band": "very_cold"},
       "capabilities": ["WiFi recon / monitor mode scanning", "Potential WiFi CSI / channel analysis (driver support required)", "GPS time/position reference"],
       "recommended_role": "Experimental WiFi CSI / channel analysis node",
+      "host_type": {"id": "rpi5_8gb", "name": "Raspberry Pi 5 8GB", "tags": ["whitefrost_default", "edge_compute"]},
+      "radios": [{"id": "wifi_ax210", "name": "Intel AX210", "radio_type": "wifi", "bands": ["wifi_2.4", "wifi_5", "wifi_6e"]}],
+      "antennas": [{"id": "patch_14dbi", "name": "14 dBi patch", "gain_dbi": 14, "pattern": "directional"}],
+      "sensors": [{"id": "gps_usb", "name": "u-blox GPS", "type": "gps"}, {"id": "imu_i2c", "name": "IMU", "type": "imu"}],
       "parts": {
         "host_id": "rpi5_8gb",
         "battery_id": "talentcell_144wh",
         "rf_chains": [{"radio_id": "wifi_ax210", "antenna_id": "patch_14dbi"}],
         "sensor_ids": ["gps_usb", "imu_i2c"]
       },
+      "estimated_runtime_min": 378,
       "notes": "Cold-weather tuned recon/CSI control package"
     },
     {
@@ -75,17 +82,23 @@
       "roles": ["relay"],
       "rf_bands": ["lora_0.9"],
       "power_profile": {"estimated_draw_w": 8.5, "ideal_runtime_h": 10.5, "adjusted_runtime_h": 8.9, "capacity_factor": 0.85},
-      "battery": {"id": "field_200wh", "capacity_wh": 200, "chemistry": "Li-ion"},
-      "location": {"lat": 39.57, "lon": -105.80, "elevation_m": 2725},
+      "battery": {"id": "field_200wh", "capacity_wh": 200, "chemistry": "Li-ion", "tags": ["relay_node"]},
+      "location": {"lat": 39.57, "lon": -105.8, "elevation_m": 2725},
       "environment": {"propagation": "rural_open", "altitude_band": "band_2000_3000", "temperature_band": "very_cold"},
+      "environment_assumptions": {"propagation": "rural_open", "altitude_band": "band_2000_3000", "temperature_band": "very_cold"},
       "capabilities": ["LoRa telemetry / low-rate sensor network"],
       "recommended_role": "Endurance ISR node",
+      "host_type": {"id": "rpi4_8gb", "name": "Raspberry Pi 4 8GB", "tags": ["whitefrost_default", "edge_compute"]},
+      "radios": [{"id": "lora_sx1302", "name": "SX1302 concentrator", "radio_type": "lora", "bands": ["lora_0.9"]}],
+      "antennas": [{"id": "yagi_900_10dbi", "name": "10 dBi Yagi", "gain_dbi": 10, "pattern": "directional"}],
+      "sensors": [],
       "parts": {
         "host_id": "rpi4_8gb",
         "battery_id": "field_200wh",
         "rf_chains": [{"radio_id": "lora_sx1302", "antenna_id": "yagi_900_10dbi"}],
         "sensor_ids": []
       },
+      "estimated_runtime_min": 534,
       "notes": "Printed mast collar, taped battery wrap for sub-zero nights"
     },
     {
@@ -96,17 +109,23 @@
       "roles": ["relay"],
       "rf_bands": ["lora_0.9"],
       "power_profile": {"estimated_draw_w": 8.5, "ideal_runtime_h": 10.5, "adjusted_runtime_h": 8.9, "capacity_factor": 0.85},
-      "battery": {"id": "field_200wh", "capacity_wh": 200, "chemistry": "Li-ion"},
+      "battery": {"id": "field_200wh", "capacity_wh": 200, "chemistry": "Li-ion", "tags": ["relay_node"]},
       "location": {"lat": 39.58, "lon": -105.76, "elevation_m": 2680},
       "environment": {"propagation": "rural_open", "altitude_band": "band_2000_3000", "temperature_band": "very_cold"},
+      "environment_assumptions": {"propagation": "rural_open", "altitude_band": "band_2000_3000", "temperature_band": "very_cold"},
       "capabilities": ["LoRa telemetry / low-rate sensor network"],
       "recommended_role": "Endurance ISR node",
+      "host_type": {"id": "rpi4_8gb", "name": "Raspberry Pi 4 8GB", "tags": ["whitefrost_default", "edge_compute"]},
+      "radios": [{"id": "lora_sx1302", "name": "SX1302 concentrator", "radio_type": "lora", "bands": ["lora_0.9"]}],
+      "antennas": [{"id": "yagi_900_10dbi", "name": "10 dBi Yagi", "gain_dbi": 10, "pattern": "directional"}],
+      "sensors": [],
       "parts": {
         "host_id": "rpi4_8gb",
         "battery_id": "field_200wh",
         "rf_chains": [{"radio_id": "lora_sx1302", "antenna_id": "yagi_900_10dbi"}],
         "sensor_ids": []
       },
+      "estimated_runtime_min": 534,
       "notes": "Line-of-sight back to control ridge; cold-soak tested"
     },
     {
@@ -117,29 +136,53 @@
       "roles": ["gateway", "relay"],
       "rf_bands": ["wifi_2.4"],
       "power_profile": {"estimated_draw_w": 9.5, "ideal_runtime_h": 18.0, "adjusted_runtime_h": 14.0, "capacity_factor": 0.78},
-      "battery": {"id": "talentcell_144wh", "capacity_wh": 144, "chemistry": "Li-ion"},
+      "battery": {"id": "talentcell_144wh", "capacity_wh": 144, "chemistry": "Li-ion", "tags": ["sustainment"]},
       "location": {"lat": 39.59, "lon": -105.81, "elevation_m": 2450},
       "environment": {"propagation": "rural_open", "altitude_band": "band_2000_3000", "temperature_band": "very_cold"},
+      "environment_assumptions": {"propagation": "rural_open", "altitude_band": "band_2000_3000", "temperature_band": "very_cold"},
       "capabilities": ["WiFi client/backhaul", "Environmental sensing (temp/humidity)", "GPS time/position reference"],
       "recommended_role": "Balanced multi-role field node",
+      "host_type": {"id": "rpi4_8gb", "name": "Raspberry Pi 4 8GB", "tags": ["whitefrost_default", "edge_compute"]},
+      "radios": [{"id": "wifi_awus036acm", "name": "ALFA AWUS036ACM", "radio_type": "wifi", "bands": ["wifi_2.4", "wifi_5"]}],
+      "antennas": [{"id": "omni_5dbi", "name": "5 dBi omni", "gain_dbi": 5, "pattern": "omni"}],
+      "sensors": [{"id": "env_bme280", "name": "BME280", "type": "environment"}, {"id": "gps_usb", "name": "u-blox GPS", "type": "gps"}],
       "parts": {
         "host_id": "rpi4_8gb",
         "battery_id": "talentcell_144wh",
         "rf_chains": [{"radio_id": "wifi_awus036acm", "antenna_id": "omni_5dbi"}],
         "sensor_ids": ["env_bme280", "gps_usb"]
       },
+      "estimated_runtime_min": 840,
       "notes": "Caches spare batteries and lightweight solar in partner hut"
     }
   ],
   "mesh_links": [
     {
-      "id": "mesh-whitefrost-alpha", "origin_tool": "node", "from_node": "node-whitefrost-recon", "to_node": "node-whitefrost-mesh-1", "band": "lora_0.9", "estimated_range_km": 2.0, "notes": "LOS uplink ridge"
+      "id": "mesh-whitefrost-alpha",
+      "origin_tool": "node",
+      "from_node": "node-whitefrost-recon",
+      "to_node": "node-whitefrost-mesh-1",
+      "band": "lora_0.9",
+      "estimated_range_km": 2.0,
+      "notes": "LOS uplink ridge"
     },
     {
-      "id": "mesh-whitefrost-bravo", "origin_tool": "node", "from_node": "node-whitefrost-mesh-1", "to_node": "node-whitefrost-mesh-2", "band": "lora_0.9", "estimated_range_km": 2.1, "notes": "Ridge-to-ridge relay"
+      "id": "mesh-whitefrost-bravo",
+      "origin_tool": "node",
+      "from_node": "node-whitefrost-mesh-1",
+      "to_node": "node-whitefrost-mesh-2",
+      "band": "lora_0.9",
+      "estimated_range_km": 2.1,
+      "notes": "Ridge-to-ridge relay"
     },
     {
-      "id": "mesh-whitefrost-sustain", "origin_tool": "node", "from_node": "node-whitefrost-mesh-2", "to_node": "node-whitefrost-sustain", "band": "wifi_2.4", "estimated_range_km": 0.3, "notes": "Short hop into sustainment hut"
+      "id": "mesh-whitefrost-sustain",
+      "origin_tool": "node",
+      "from_node": "node-whitefrost-mesh-2",
+      "to_node": "node-whitefrost-sustain",
+      "band": "wifi_2.4",
+      "estimated_range_km": 0.3,
+      "notes": "Short hop into sustainment hut"
     }
   ],
   "kits": [

@@ -137,6 +137,53 @@ def _build_node(
     return node_entry
 
 
+def assemble_node_bundle(
+    builds: Iterable[Tuple[str, NodeBuild, object, List[str], str, Dict[str, float]]],
+    altitude_band: str = "band_2000_3000",
+    temperature_band: str = "cold",
+    mission: Optional[Dict] = None,
+    schema_version: str = SCHEMA_VERSION,
+) -> Dict:
+    """Assemble a lightweight MissionProject schema payload with only nodes/platforms.
+
+    This keeps the shape aligned to the MissionProject v2.0.0 schema while focusing on
+    the modeled nodes. It is meant for downstream tools that want a clean bundle of
+    nodes without extra mission scaffolding.
+    """
+
+    platforms: Dict[str, Dict] = {}
+    nodes: List[Dict] = []
+
+    for node_id, build, estimate, roles, label, location in builds:
+        platform_entry = _build_platform(build.host)
+        platforms[platform_entry["id"]] = platform_entry
+        node_location = {k: v for k, v in (location or {}).items() if k in {"lat", "lon", "elevation_m"}}
+        node_altitude = (location or {}).get("altitude_band", altitude_band)
+        node_temperature = (location or {}).get("temperature_band", temperature_band)
+        nodes.append(
+            _build_node(
+                node_id=node_id,
+                name=label or node_id,
+                build=build,
+                estimate=estimate,
+                roles=roles,
+                notes=label,
+                altitude_band=node_altitude,
+                temperature_band=node_temperature,
+                location=node_location,
+            )
+        )
+
+    return {
+        "schemaVersion": schema_version,
+        "meta": {"origin_tool": "node"},
+        "origin_tool": "node",
+        "mission": mission or {},
+        "platforms": list(platforms.values()),
+        "nodes": nodes,
+    }
+
+
 def assemble_project(
     builds: Iterable[Tuple[str, NodeBuild, object, List[str], str, Dict[str, float]]],
     mission: Optional[Dict] = None,

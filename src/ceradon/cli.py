@@ -4,12 +4,20 @@ import argparse
 import json
 import pathlib
 import sys
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .data_loader import find_by_id, load_components
 from .estimator import estimate_node, format_report
 from .models import NodeBuild
-from .mission_project import LEGACY_SCHEMA_TAG, assemble_project, parse_project, project_to_builds, to_cot_stub, to_geojson
+from .mission_project import (
+    LEGACY_SCHEMA_TAG,
+    assemble_node_bundle,
+    assemble_project,
+    parse_project,
+    project_to_builds,
+    to_cot_stub,
+    to_geojson,
+)
 
 PRESET_DIR = pathlib.Path(__file__).resolve().parents[2] / "sample_builds"
 
@@ -68,6 +76,39 @@ def simulate(config_path: pathlib.Path):
     estimate = estimate_node(build)
     report = format_report(build, estimate)
     print(report)
+
+
+def export_node_bundle(
+    config_paths: List[pathlib.Path],
+    preset_names: List[str],
+    output_path: pathlib.Path,
+    mission_name: str,
+    altitude_band: str,
+    temperature_band: str,
+    environment_override: Optional[str] = None,
+):
+    inventory_paths = list(config_paths)
+    inventory_paths.extend(resolve_preset(name) for name in preset_names)
+    if not inventory_paths:
+        raise ValueError("At least one --config or --preset is required to export a bundle")
+
+    builds: List[Tuple[str, NodeBuild, object, List[str], str, Dict[str, float]]] = []
+    for config_path in inventory_paths:
+        build, estimate = _build_and_estimate(config_path, environment_override)
+        node_id = f"node-{config_path.stem}"
+        node_label = config_path.stem.replace("_", " ")
+        location = {"altitude_band": altitude_band, "temperature_band": temperature_band}
+        builds.append((node_id, build, estimate, [estimate.recommended_role], node_label, location))
+
+    bundle = assemble_node_bundle(
+        builds,
+        altitude_band=altitude_band,
+        temperature_band=temperature_band,
+        mission={"name": mission_name},
+    )
+    with output_path.open("w", encoding="utf-8") as handle:
+        json.dump(bundle, handle, indent=2)
+    print(f"MissionProject bundle written to {output_path}")
 
 
 def export_mission_project(
@@ -210,6 +251,29 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Deprecated: emit legacy mission_project_v1 schema instead of schemaVersion 2.0.0",
     )
 
+    export_bundle = sub.add_parser(
+        "export-bundle", help="Export a MissionProject node bundle skeleton (schema v2.0.0)"
+    )
+    export_bundle.add_argument("output", type=pathlib.Path, help="Output path for MissionProject bundle JSON")
+    export_bundle.add_argument("--config", action="append", type=pathlib.Path, help="Path to build JSON")
+    export_bundle.add_argument("--preset", action="append", choices=preset_choices, help="Preset name from sample_builds")
+    export_bundle.add_argument("--mission-name", default="Project WHITEFROST Demo")
+    export_bundle.add_argument(
+        "--altitude-band",
+        default="band_2000_3000",
+        choices=["sea_level", "band_1000_2000", "band_2000_3000", "above_3000"],
+    )
+    export_bundle.add_argument(
+        "--temperature-band",
+        default="cold",
+        choices=["hot", "temperate", "cold", "very_cold"],
+    )
+    export_bundle.add_argument(
+        "--environment",
+        choices=["lab", "urban_indoor", "urban_outdoor", "rural_open", "subterranean"],
+        help="Override environment assumption for all bundle nodes",
+    )
+
     import_mp = sub.add_parser("import-mission", help="Import a MissionProject JSON and list usable builds")
     import_mp.add_argument("mission_file", type=pathlib.Path)
     import_mp.add_argument("--simulate", action="store_true", help="Run estimator for each usable node")
@@ -260,6 +324,23 @@ def main(argv=None):
             elevation_m=args.elevation_m,
             schema_version=schema_version,
         )
+    elif args.command == "export-bundle":
+        config_paths = args.config or []
+        preset_names = args.preset or []
+        if not config_paths and not preset_names:
+            parser.error("export-bundle requires at least one --config or --preset")
+        try:
+            export_node_bundle(
+                config_paths=config_paths,
+                preset_names=preset_names,
+                output_path=args.output,
+                mission_name=args.mission_name,
+                altitude_band=args.altitude_band,
+                temperature_band=args.temperature_band,
+                environment_override=args.environment,
+            )
+        except ValueError as exc:
+            parser.error(str(exc))
     elif args.command == "import-mission":
         import_mission_project(args.mission_file, simulate=args.simulate)
     elif args.command == "atak-export":
